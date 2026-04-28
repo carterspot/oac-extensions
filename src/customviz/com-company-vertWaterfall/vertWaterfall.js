@@ -428,43 +428,34 @@ define([
           .append('text')
           .attr({
             'text-anchor': 'end',
+            'dominant-baseline': 'central',
             'font-family': settings.dataLabelFont,
             'font-size': settings.dataLabelSize,
             'font-style': settings.dataLabelItalic ? 'italic' : 'normal',
+            'font-weight': settings.dataLabelBold ? '600' : 'normal',
             fill: insideFill
           });
 
+        // Single-line "value (delta)" — stacking the two tspans caused vertical
+        // overlap when bandHeight was small (issue #11). Width grows but the
+        // auto-flip post-pass below handles overflow.
         text
           .append('tspan')
           .attr({
             y: function(d, i) {
-              return i * bandHeight + (bandHeight - 5) / 2 - 3;
+              return i * bandHeight + bandHeight / 2;
             },
             x: function(d, i) {
               return textPosition(d, i);
-            },
-            'font-weight': settings.dataLabelBold ? '600' : 'normal'
+            }
           })
           .text(function(d, i) {
-            return formatNumber(d.size, settings.numberFormat);
-          });
-        text
-          .append('tspan')
-          .attr({
-            y: function(d, i) {
-              return i * bandHeight + (bandHeight - 10) / 2 - 3;
-            },
-            x: function(d, i) {
-              return textPosition(d, i);
-            },
-            dy: 16
-          })
-          .text(function(d, i) {
-            if (i === 0) return '';
+            var value = formatNumber(d.size, settings.numberFormat);
+            if (i === 0) return value;
             var raw = d.size - dataset[i - 1].size;
-            var formatted = formatNumber(raw, settings.numberFormat);
-            if (raw > 0 && formatted.charAt(0) !== '+') formatted = '+' + formatted;
-            return '(' + formatted + ')';
+            var delta = formatNumber(raw, settings.numberFormat);
+            if (raw > 0 && delta.charAt(0) !== '+') delta = '+' + delta;
+            return value + ' (' + delta + ')';
           });
 
         // Labels render with text-anchor:end at the bar's right edge minus 10px.
@@ -578,11 +569,16 @@ define([
             return settings.axisLabels === 'off' ? '' : v;
           });
 
+        // X axis aligns with the bottom of the bar area (margin.top + plot
+        // height) so it stays glued to the bars when an axis title pushes
+        // margin.bottom up. Previously hardcoded to `height - margin.top`,
+        // which left a 20px gap with a title and let tick labels overlap the
+        // title text (issue #2).
         svg
           .append('g')
           .attr(
             'transform',
-            'translate(' + margin.left + ',' + (height - margin.top) + ')'
+            'translate(' + margin.left + ',' + (margin.top + (height - margin.bottom)) + ')'
           )
           .attr('class', 'axis')
           .call(xAxis);
