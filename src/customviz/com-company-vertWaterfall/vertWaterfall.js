@@ -56,7 +56,11 @@ define([
     axisLabels: 'on',
     valuesAxisLabels: 'on',
     axisTitle: '',
-    numberFormat: 'auto'
+    numberFormat: 'auto',
+    dataLabelContent: 'valueDelta',
+    showStartTotal: true,
+    showEndTotal: true,
+    showGrandTotal: true
   };
 
   function getWaterfallSettings(viz) {
@@ -76,7 +80,11 @@ define([
       axisLabels: wf.axisLabels || DEFAULTS.axisLabels,
       valuesAxisLabels: wf.valuesAxisLabels || DEFAULTS.valuesAxisLabels,
       axisTitle: typeof wf.axisTitle === 'string' ? wf.axisTitle : DEFAULTS.axisTitle,
-      numberFormat: wf.numberFormat || DEFAULTS.numberFormat
+      numberFormat: wf.numberFormat || DEFAULTS.numberFormat,
+      dataLabelContent: wf.dataLabelContent || DEFAULTS.dataLabelContent,
+      showStartTotal: typeof wf.showStartTotal === 'boolean' ? wf.showStartTotal : DEFAULTS.showStartTotal,
+      showEndTotal: typeof wf.showEndTotal === 'boolean' ? wf.showEndTotal : DEFAULTS.showEndTotal,
+      showGrandTotal: typeof wf.showGrandTotal === 'boolean' ? wf.showGrandTotal : DEFAULTS.showGrandTotal
     };
   }
 
@@ -290,15 +298,44 @@ define([
         return;
       }
 
+      // Build renderRows from data rows, attaching per-row context so the
+      // bar/label helpers don't need to walk back into `dataset[i-1]`.
+      // Issue #14 (cumulative/percent), #15 (Start/End value override on
+      // first/last data row).
+      var grandTotal = 0;
+      for (let gi = 0; gi < dataset.length; gi++) {
+        grandTotal += Number(dataset[gi].size) || 0;
+      }
+      var renderRows = [];
+      var runningSum = 0;
+      for (let di = 0; di < dataset.length; di++) {
+        runningSum += Number(dataset[di].size) || 0;
+        renderRows.push({
+          name: dataset[di].name,
+          size: dataset[di].size,
+          color: dataset[di].color,
+          tooltip: dataset[di].tooltip,
+          _dataIdx: di,
+          _prevDataSize: di > 0 ? dataset[di - 1].size : null,
+          _cumulative: runningSum
+        });
+      }
+      // End total bar (#15): static neutral bar sized at the LAST data row's
+      // value so it fits the existing x-scale and doesn't skew the chart.
+      // Always labelled with its value (handled by buildLabel via _isTotal).
+      if (settings.showEndTotal && dataset.length > 0) {
+        renderRows.push({
+          name: 'End',
+          size: dataset[dataset.length - 1].size,
+          _isTotal: true
+        });
+      }
+
       var names = [];
-      dataset.forEach(function(d, i, a) {
-        names.push(d.name);
-      });
+      renderRows.forEach(function(d) { names.push(d.name); });
 
       var sizes = [];
-      dataset.forEach(function(d, i, a) {
-        sizes.push(d.size);
-      });
+      renderRows.forEach(function(d) { sizes.push(d.size); });
 
       // Reserve enough left margin for the widest *actual* y-axis label —
       // the previous 6.5*charCount heuristic underestimated capitals and
@@ -344,7 +381,7 @@ define([
       var x = getXScale();
       var y = getYScale();
 
-      var bandHeight = (height - margin.bottom) / dataset.length;
+      var bandHeight = (height - margin.bottom) / renderRows.length;
 
       setAxis();
       setFilter();
@@ -358,7 +395,7 @@ define([
       var rectYOffset = (bandHeight - rectHeight) / 2;
       rectWrapper
         .selectAll('rect')
-        .data(dataset)
+        .data(renderRows)
         .enter()
         .append('rect')
         .attr({
@@ -379,7 +416,7 @@ define([
         .on('mouseover', function(d, i) {
           d3.select(this).style('filter', 'url(#drop-shadow)');
           var tempTooltip = '';
-          if (d.tooltip.length > 0) {
+          if (d.tooltip && d.tooltip.length > 0) {
             for (let index = 0; index < d.tooltip.length; index++) {
               const element = d.tooltip[index];
               var keys = Object.keys(element);
@@ -391,6 +428,9 @@ define([
  `;
             }
           }
+          var deltaTxt = (d._isTotal || d._prevDataSize === null)
+            ? '0'
+            : formatNumber(d.size - d._prevDataSize, settings.numberFormat);
           tooltip
             .transition()
             .duration(200)
@@ -408,14 +448,7 @@ define([
                  ? ''
                  : "style='border-bottom: 1px solid black;'"
              }>Value</th>
-             <td>${formatNumber(d.size, settings.numberFormat)} (${
-                i !== 0
-                  ? formatNumber(
-                      d.size - dataset[i - 1].size,
-                      settings.numberFormat
-                    )
-                  : 0
-              })</td>
+             <td>${formatNumber(d.size, settings.numberFormat)} (${deltaTxt})</td>
            </tr>
            ${tempTooltip}
          </table>
@@ -449,7 +482,7 @@ define([
 
         var text = textWrapper
           .selectAll('text')
-          .data(dataset)
+          .data(renderRows)
           .enter()
           .append('text')
           .attr({
@@ -475,13 +508,8 @@ define([
               return textPosition(d, i);
             }
           })
-          .text(function(d, i) {
-            var value = formatNumber(d.size, settings.numberFormat);
-            if (i === 0) return value;
-            var raw = d.size - dataset[i - 1].size;
-            var delta = formatNumber(raw, settings.numberFormat);
-            if (raw > 0 && delta.charAt(0) !== '+') delta = '+' + delta;
-            return value + ' (' + delta + ')';
+          .text(function(d) {
+            return buildLabel(d);
           });
 
         // Three-way label placement (issues #6, #12):
@@ -519,6 +547,26 @@ define([
         });
       }
 
+      // Grand total static label (issue #16). Sits at the bottom-right of the
+      // plot area, above the X-axis line. Uses the data-label font + auto fill.
+      if (settings.showGrandTotal) {
+        var gtFill = settings.dataLabelColor === 'auto'
+          ? detectThemeTextColor(elContainer)
+          : settings.dataLabelColor;
+        svg.append('text')
+          .attr({
+            x: width - margin.right - 4,
+            y: margin.top + (height - margin.bottom) - 6,
+            'text-anchor': 'end',
+            'font-family': settings.dataLabelFont,
+            'font-size': settings.dataLabelSize + 2,
+            'font-style': settings.dataLabelItalic ? 'italic' : 'normal',
+            'font-weight': '700',
+            fill: gtFill
+          })
+          .text('Total: ' + formatNumber(grandTotal, settings.numberFormat));
+      }
+
       // *** METHODS SECTION ***
 
       function areColorsTheSame() {
@@ -535,11 +583,10 @@ define([
 
       function waterfallSize(d, i) {
         var val;
-        if (i === 0) {
+        if (d._isTotal || d._prevDataSize === null) {
           val = d.size;
         } else {
-          var previousSize = dataset[i - 1].size;
-          val = Math.abs(previousSize - d.size);
+          val = Math.abs(d._prevDataSize - d.size);
         }
 
         if (val === 0) {
@@ -554,30 +601,28 @@ define([
 
       function waterfallX(d, i) {
         var val;
-        if (i === 0) {
-          if (d.size >= 0) {
-            val = 0;
-          } else {
-            val = d.size;
-          }
+        if (d._isTotal) {
+          val = 0;
+        } else if (d._prevDataSize === null) {
+          val = d.size >= 0 ? 0 : d.size;
         } else {
-          var previousSize = Number.parseFloat(dataset[i - 1].size);
+          var previousSize = Number.parseFloat(d._prevDataSize);
           if (previousSize > Number.parseFloat(d.size)) {
             val = d.size;
           } else {
-            val = dataset[i - 1].size;
+            val = d._prevDataSize;
           }
         }
-
         return x(val);
       }
 
       function waterfallColor(d, i) {
+        if (d._isTotal) return settings.neutralColor;
         if (!areColorsTheSame()) {
           return d.color;
         }
-        if (i === 0) return settings.neutralColor;
-        var prev = Number.parseFloat(dataset[i - 1].size);
+        if (d._prevDataSize === null) return settings.neutralColor;
+        var prev = Number.parseFloat(d._prevDataSize);
         var cur = Number.parseFloat(d.size);
         if (cur > prev) return settings.increaseColor;
         if (cur < prev) return settings.decreaseColor;
@@ -585,8 +630,50 @@ define([
       }
 
       function textPosition(d, i) {
-        if (i === 0 || d.size > dataset[i - 1].size) return x(d.size) - 10;
-        else return x(dataset[i - 1].size) - 10;
+        if (d._isTotal) return x(d.size) - 10;
+        if (d._prevDataSize === null || d.size > d._prevDataSize) return x(d.size) - 10;
+        return x(d._prevDataSize) - 10;
+      }
+
+      // Format the label per the user's "Data Label Content" setting (#14).
+      // Show Start/End Total (#15) force the first/last data row to display
+      // its value regardless of the content selector — useful when the user
+      // picks "Delta only" or "Cumulative" but still wants the endpoints.
+      function buildLabel(d) {
+        var value = formatNumber(d.size, settings.numberFormat);
+        if (d._isTotal) return value;
+        var isFirst = d._dataIdx === 0;
+        var isLast = d._dataIdx === dataset.length - 1;
+        if ((isFirst && settings.showStartTotal) || (isLast && settings.showEndTotal)) {
+          return value;
+        }
+        var hasPrev = d._prevDataSize !== null;
+        switch (settings.dataLabelContent) {
+          case 'valueOnly':
+            return value;
+          case 'deltaOnly': {
+            if (!hasPrev) return '';
+            var raw = d.size - d._prevDataSize;
+            var delta = formatNumber(raw, settings.numberFormat);
+            if (raw > 0 && delta.charAt(0) !== '+') delta = '+' + delta;
+            return '(' + delta + ')';
+          }
+          case 'percentOfTotal': {
+            if (!grandTotal) return value;
+            var pct = (Number(d.size) / grandTotal) * 100;
+            return (Math.round(pct * 10) / 10) + '%';
+          }
+          case 'cumulative':
+            return formatNumber(d._cumulative, settings.numberFormat);
+          case 'valueDelta':
+          default: {
+            if (!hasPrev) return value;
+            var raw2 = d.size - d._prevDataSize;
+            var delta2 = formatNumber(raw2, settings.numberFormat);
+            if (raw2 > 0 && delta2.charAt(0) !== '+') delta2 = '+' + delta2;
+            return value + ' (' + delta2 + ')';
+          }
+        }
       }
 
       function setAxis() {
@@ -631,7 +718,7 @@ define([
           .attr('class', 'axis')
           .call(xAxis);
 
-        svg
+        var yAxisG = svg
           .append('g')
           .attr(
             'transform',
@@ -639,6 +726,19 @@ define([
           )
           .attr('class', 'axis-y')
           .call(yAxis);
+
+        // d3 v3 places ordinal-scale tick groups at the band START. Bars are
+        // centered in their bands, so shift each tick group down by
+        // bandHeight/2 to put its anchor at the band CENTER. d3's default
+        // text dy='0.32em' inside the group then puts the visual center of
+        // the label exactly on the bar's vertical center.
+        yAxisG.selectAll('.tick').each(function() {
+          var existing = d3.select(this).attr('transform') || '';
+          var match = existing.match(/translate\(([^,]+),([^)]+)\)/);
+          var tx = match ? +match[1] : 0;
+          var ty = match ? +match[2] : 0;
+          d3.select(this).attr('transform', 'translate(' + tx + ',' + (ty + bandHeight / 2) + ')');
+        });
 
         if (settings.axisTitle) {
           svg
@@ -927,6 +1027,54 @@ define([
       labelColorOptions
     ));
 
+    // Data Label Content selector (#14)
+    var labelContentOptions = [
+      new gadgets.OptionInfo('valueDelta',     'Value (Delta)', 'Value (Delta)'),
+      new gadgets.OptionInfo('valueOnly',      'Value only',    'Value only'),
+      new gadgets.OptionInfo('deltaOnly',      'Delta only',    'Delta only'),
+      new gadgets.OptionInfo('percentOfTotal', '% of total',    '% of total'),
+      new gadgets.OptionInfo('cumulative',     'Cumulative',    'Cumulative')
+    ];
+    var lblContent = messages.VERTWATERFALL_DATA_LABEL_CONTENT || 'Data Label Content';
+    panel.addChild(new gadgets.SingleSelectGadgetInfo(
+      'wfDataLabelContent', lblContent, lblContent,
+      new gadgets.GadgetValueProperties(
+        euidef.GadgetTypeIDs.SINGLE_SELECT,
+        wf.dataLabelContent || DEFAULTS.dataLabelContent,
+        { ariaLabel: lblContent }
+      ),
+      0, false,
+      labelContentOptions
+    ));
+
+    // Start / End total bars (#15)
+    var ckStartTotal = typeof wf.showStartTotal === 'boolean' ? wf.showStartTotal : DEFAULTS.showStartTotal;
+    panel.addChild(new gadgets.CheckboxGadgetInfo(
+      'wfShowStartTotal',
+      messages.VERTWATERFALL_SHOW_START_TOTAL || 'Show Start Total',
+      'Insert a synthetic Start row showing the first value',
+      new gadgets.CheckboxGadgetValueProperties(euidef.GadgetTypeIDs.CHECKBOX, ckStartTotal, ckStartTotal),
+      0, false
+    ));
+    var ckEndTotal = typeof wf.showEndTotal === 'boolean' ? wf.showEndTotal : DEFAULTS.showEndTotal;
+    panel.addChild(new gadgets.CheckboxGadgetInfo(
+      'wfShowEndTotal',
+      messages.VERTWATERFALL_SHOW_END_TOTAL || 'Show End Total',
+      'Insert a synthetic End row showing the last (cumulative) value',
+      new gadgets.CheckboxGadgetValueProperties(euidef.GadgetTypeIDs.CHECKBOX, ckEndTotal, ckEndTotal),
+      0, false
+    ));
+
+    // Grand total static label (#16)
+    var ckGrandTotal = typeof wf.showGrandTotal === 'boolean' ? wf.showGrandTotal : DEFAULTS.showGrandTotal;
+    panel.addChild(new gadgets.CheckboxGadgetInfo(
+      'wfShowGrandTotal',
+      messages.VERTWATERFALL_SHOW_GRAND_TOTAL || 'Show Grand Total',
+      'Render a static grand-total label in the bottom-right of the plot area',
+      new gadgets.CheckboxGadgetValueProperties(euidef.GadgetTypeIDs.CHECKBOX, ckGrandTotal, ckGrandTotal),
+      0, false
+    ));
+
     VertWaterfall.superClass._addVizSpecificPropsDialog.call(
       this,
       oTabbedPanelsGadgetInfo
@@ -979,7 +1127,11 @@ define([
       wfDataLabelSize:     { key: 'dataLabelSize',    transform: function(v){ return Math.max(8, Math.min(24, Number(v))); } },
       wfDataLabelBold:     { key: 'dataLabelBold' },
       wfDataLabelItalic:   { key: 'dataLabelItalic' },
-      wfDataLabelColor:    { key: 'dataLabelColor' }
+      wfDataLabelColor:    { key: 'dataLabelColor' },
+      wfDataLabelContent:  { key: 'dataLabelContent' },
+      wfShowStartTotal:    { key: 'showStartTotal' },
+      wfShowEndTotal:      { key: 'showEndTotal' },
+      wfShowGrandTotal:    { key: 'showGrandTotal' }
     };
     var mapping = WF_GADGET_TO_KEY[sGadgetID];
     if (mapping && oPropChange) {
@@ -1036,7 +1188,11 @@ define([
         axisLabels: DEFAULTS.axisLabels,
         valuesAxisLabels: DEFAULTS.valuesAxisLabels,
         axisTitle: DEFAULTS.axisTitle,
-        numberFormat: DEFAULTS.numberFormat
+        numberFormat: DEFAULTS.numberFormat,
+        dataLabelContent: DEFAULTS.dataLabelContent,
+        showStartTotal: DEFAULTS.showStartTotal,
+        showEndTotal: DEFAULTS.showEndTotal,
+        showGrandTotal: DEFAULTS.showGrandTotal
       };
       bUpdated = true;
     }
