@@ -51,7 +51,10 @@ task run(type: Exec, dependsOn: validate) {
    else {
       executable "${desktopDir}/dv-desktop"
    }
-   args '-sdk', "-pluginDevDir=${projectDir}${File.separator}src"
+   // --remote-debugging-port exposes Chrome DevTools Protocol so MCP servers
+   // (and a regular browser pointing at http://localhost:9222) can connect.
+   // Localhost-only by default; nothing to firewall.
+   args '-sdk', "-pluginDevDir=${projectDir}${File.separator}src", '--remote-debugging-port=9222'
    ignoreExitValue true
    doFirst {
      mkdir "${buildDir}"

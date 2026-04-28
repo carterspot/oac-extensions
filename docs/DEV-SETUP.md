@@ -67,3 +67,22 @@ dvdesktop launches into the system tray. Right-click the tray icon → "Copy URL
 **Custom plugin not loading / stale code** — if your plugin is also installed via Console → Extensions in the running dvdesktop, that installed copy wins over `-pluginDevDir`. Uninstall the installed version first. To force a fresh unpack: `Remove-Item -Recurse -Force "$env:LOCALAPPDATA\Temp\DVDesktop"` before running gradle.
 
 **dvdesktop window not visible** — it launches into the system tray. Click the system tray's "Show hidden icons" arrow → right-click Oracle Analytics Desktop → "Copy URL to Clipboard" → paste in browser.
+
+## Chrome DevTools Protocol (CDP) for MCP integration
+
+`build.gradle`'s `run` task passes `--remote-debugging-port=9222` to dvdesktop, exposing CDP on a fixed port (the dvdesktop UI itself is served on a different, randomly-chosen Jetty port — that one varies, the CDP port doesn't).
+
+When dvdesktop is running, verify CDP is live:
+
+```powershell
+Invoke-RestMethod http://localhost:9222/json/version
+```
+
+If you get JSON back with `Browser` / `Protocol-Version` / etc., CDP is up.
+
+If you get a 404 or connection refused, CEF didn't honor the flag. Fallback: try the env var
+`$env:CEF_REMOTE_DEBUGGING_PORT = '9222'` before `gradlew run`, or check `build/run.log` for CEF startup messages mentioning the flag.
+
+`.mcp.json` at the repo root configures the [`chrome-devtools-mcp`](https://github.com/ChromeDevTools/chrome-devtools-mcp) server to connect to `http://localhost:9222`. With Claude Code open in the repo, the MCP server gives Claude tools to evaluate JS in the running dvdesktop, read the console, take screenshots, etc. — useful for the gadget-framework debugging patterns documented in `PANEL-API-NOTES.md`.
+
+Requires Node.js installed (npx is bundled). First time the MCP server runs, it downloads the package; subsequent launches are cached.
