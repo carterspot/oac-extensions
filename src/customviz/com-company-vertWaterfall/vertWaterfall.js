@@ -484,12 +484,13 @@ define([
             return value + ' (' + delta + ')';
           });
 
-        // Labels render with text-anchor:end at the bar's right edge minus 10px.
-        // When the formatted value is wider than the bar, the text overflows
-        // off the LEFT side of the bar onto the white chart background and
-        // becomes invisible (issue #6). Measure each label after layout; if
-        // it doesn't fit, push it to the right of the bar and (in 'auto' mode)
-        // flip to a dark fill for legibility.
+        // Three-way label placement (issues #6, #12):
+        //   1. Fits inside the bar → leave it (anchor end at barRight - 10).
+        //   2. Doesn't fit, but there's room outside-right → flip there.
+        //   3. Wouldn't fit outside either (bar near chart's right edge) →
+        //      anchor at the chart's right edge so the label stays on-screen,
+        //      using insideFill since most of it overlays the bar.
+        var plotWidth = width - margin.left - margin.right;
         text.each(function(d, i) {
           var node = this;
           var barLeft = waterfallX(d, i);
@@ -501,11 +502,19 @@ define([
             var w = tspans[k].getComputedTextLength ? tspans[k].getComputedTextLength() : 0;
             if (w > maxTspanWidth) maxTspanWidth = w;
           }
-          if (labelRight - maxTspanWidth < barLeft) {
+          var fitsInside = labelRight - maxTspanWidth >= barLeft;
+          if (fitsInside) return;
+          var fitsOutsideRight = barRight + 4 + maxTspanWidth <= plotWidth;
+          if (fitsOutsideRight) {
             d3.select(node)
               .attr('text-anchor', 'start')
               .attr('fill', outsideFill);
             d3.select(node).selectAll('tspan').attr('x', barRight + 4);
+          } else {
+            d3.select(node)
+              .attr('text-anchor', 'end')
+              .attr('fill', insideFill);
+            d3.select(node).selectAll('tspan').attr('x', plotWidth - 2);
           }
         });
       }
