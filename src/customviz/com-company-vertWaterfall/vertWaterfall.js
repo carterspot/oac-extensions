@@ -48,6 +48,11 @@ define([
     neutralColor: '#9AA4AD',
     barGap: 0.37,
     dataLabels: 'on',
+    dataLabelFont: 'sans-serif',
+    dataLabelSize: 12,
+    dataLabelBold: true,
+    dataLabelItalic: false,
+    dataLabelColor: 'auto',
     axisLabels: 'on',
     valuesAxisLabels: 'on',
     axisTitle: '',
@@ -63,6 +68,11 @@ define([
       neutralColor: wf.neutralColor || DEFAULTS.neutralColor,
       barGap: typeof wf.barGap === 'number' ? wf.barGap : DEFAULTS.barGap,
       dataLabels: wf.dataLabels || DEFAULTS.dataLabels,
+      dataLabelFont: wf.dataLabelFont || DEFAULTS.dataLabelFont,
+      dataLabelSize: typeof wf.dataLabelSize === 'number' ? wf.dataLabelSize : DEFAULTS.dataLabelSize,
+      dataLabelBold: typeof wf.dataLabelBold === 'boolean' ? wf.dataLabelBold : DEFAULTS.dataLabelBold,
+      dataLabelItalic: typeof wf.dataLabelItalic === 'boolean' ? wf.dataLabelItalic : DEFAULTS.dataLabelItalic,
+      dataLabelColor: wf.dataLabelColor || DEFAULTS.dataLabelColor,
       axisLabels: wf.axisLabels || DEFAULTS.axisLabels,
       valuesAxisLabels: wf.valuesAxisLabels || DEFAULTS.valuesAxisLabels,
       axisTitle: typeof wf.axisTitle === 'string' ? wf.axisTitle : DEFAULTS.axisTitle,
@@ -391,13 +401,16 @@ define([
             .style('opacity', 0);
         });
 
-      if (rectHeight > 12 && settings.dataLabels === 'on') {
+      if (rectHeight > settings.dataLabelSize && settings.dataLabels === 'on') {
         var textWrapper = svg
           .append('g')
           .attr(
             'transform',
             'translate(' + margin.left + ',' + margin.top + ')'
           );
+
+        var insideFill = settings.dataLabelColor === 'auto' ? 'white' : settings.dataLabelColor;
+        var outsideFill = settings.dataLabelColor === 'auto' ? '#333' : settings.dataLabelColor;
 
         var text = textWrapper
           .selectAll('text')
@@ -406,9 +419,10 @@ define([
           .append('text')
           .attr({
             'text-anchor': 'end',
-            'font-family': 'sans-serif',
-            'font-size': 12,
-            fill: 'white'
+            'font-family': settings.dataLabelFont,
+            'font-size': settings.dataLabelSize,
+            'font-style': settings.dataLabelItalic ? 'italic' : 'normal',
+            fill: insideFill
           });
 
         text
@@ -420,7 +434,7 @@ define([
             x: function(d, i) {
               return textPosition(d, i);
             },
-            'font-weight': '600'
+            'font-weight': settings.dataLabelBold ? '600' : 'normal'
           })
           .text(function(d, i) {
             return formatNumber(d.size, settings.numberFormat);
@@ -443,6 +457,31 @@ define([
             if (raw > 0 && formatted.charAt(0) !== '+') formatted = '+' + formatted;
             return '(' + formatted + ')';
           });
+
+        // Labels render with text-anchor:end at the bar's right edge minus 10px.
+        // When the formatted value is wider than the bar, the text overflows
+        // off the LEFT side of the bar onto the white chart background and
+        // becomes invisible (issue #6). Measure each label after layout; if
+        // it doesn't fit, push it to the right of the bar and (in 'auto' mode)
+        // flip to a dark fill for legibility.
+        text.each(function(d, i) {
+          var node = this;
+          var barLeft = waterfallX(d, i);
+          var barRight = barLeft + waterfallSize(d, i);
+          var labelRight = textPosition(d, i);
+          var maxTspanWidth = 0;
+          var tspans = node.getElementsByTagName('tspan');
+          for (var k = 0; k < tspans.length; k++) {
+            var w = tspans[k].getComputedTextLength ? tspans[k].getComputedTextLength() : 0;
+            if (w > maxTspanWidth) maxTspanWidth = w;
+          }
+          if (labelRight - maxTspanWidth < barLeft) {
+            d3.select(node)
+              .attr('text-anchor', 'start')
+              .attr('fill', outsideFill);
+            d3.select(node).selectAll('tspan').attr('x', barRight + 4);
+          }
+        });
       }
 
       // *** METHODS SECTION ***
@@ -747,6 +786,70 @@ define([
       fmtOptions
     ));
 
+    // Data label font controls
+    var labelFontOptions = [
+      new gadgets.OptionInfo('sans-serif', 'Sans-serif', 'Sans-serif'),
+      new gadgets.OptionInfo('serif',      'Serif',      'Serif'),
+      new gadgets.OptionInfo('monospace',  'Monospace',  'Monospace')
+    ];
+    var lblFont = messages.VERTWATERFALL_DATA_LABEL_FONT || 'Label Font';
+    panel.addChild(new gadgets.SingleSelectGadgetInfo(
+      'wfDataLabelFont', lblFont, lblFont,
+      new gadgets.GadgetValueProperties(
+        euidef.GadgetTypeIDs.SINGLE_SELECT,
+        wf.dataLabelFont || DEFAULTS.dataLabelFont,
+        { ariaLabel: lblFont }
+      ),
+      0, false,
+      labelFontOptions
+    ));
+
+    var initialLabelSize = typeof wf.dataLabelSize === 'number' ? wf.dataLabelSize : DEFAULTS.dataLabelSize;
+    panel.addChild(new gadgets.SliderGadgetInfo(
+      'wfDataLabelSize',
+      messages.VERTWATERFALL_DATA_LABEL_SIZE || 'Label Size',
+      'Font size for data labels (px)',
+      new gadgets.SliderGadgetValueProperties(euidef.GadgetTypeIDs.SLIDER, initialLabelSize, 8, 24, 1),
+      0, false, null,
+      { fValueFormatter: function(v) { return v + 'px'; } }
+    ));
+
+    var ckLabelBold = typeof wf.dataLabelBold === 'boolean' ? wf.dataLabelBold : DEFAULTS.dataLabelBold;
+    panel.addChild(new gadgets.CheckboxGadgetInfo(
+      'wfDataLabelBold',
+      messages.VERTWATERFALL_DATA_LABEL_BOLD || 'Label Bold',
+      'Render data labels in bold',
+      new gadgets.CheckboxGadgetValueProperties(euidef.GadgetTypeIDs.CHECKBOX, ckLabelBold, ckLabelBold),
+      0, false
+    ));
+
+    var ckLabelItalic = typeof wf.dataLabelItalic === 'boolean' ? wf.dataLabelItalic : DEFAULTS.dataLabelItalic;
+    panel.addChild(new gadgets.CheckboxGadgetInfo(
+      'wfDataLabelItalic',
+      messages.VERTWATERFALL_DATA_LABEL_ITALIC || 'Label Italic',
+      'Render data labels in italic',
+      new gadgets.CheckboxGadgetValueProperties(euidef.GadgetTypeIDs.CHECKBOX, ckLabelItalic, ckLabelItalic),
+      0, false
+    ));
+
+    var labelColorOptions = [
+      new gadgets.OptionInfo('auto',  'Auto (contrast)', 'Auto (contrast)'),
+      new gadgets.OptionInfo('white', 'White',           'White'),
+      new gadgets.OptionInfo('black', 'Black',           'Black'),
+      new gadgets.OptionInfo('#444',  'Dark Gray',       'Dark Gray')
+    ];
+    var lblLabelColor = messages.VERTWATERFALL_DATA_LABEL_COLOR || 'Label Color';
+    panel.addChild(new gadgets.SingleSelectGadgetInfo(
+      'wfDataLabelColor', lblLabelColor, lblLabelColor,
+      new gadgets.GadgetValueProperties(
+        euidef.GadgetTypeIDs.SINGLE_SELECT,
+        wf.dataLabelColor || DEFAULTS.dataLabelColor,
+        { ariaLabel: lblLabelColor }
+      ),
+      0, false,
+      labelColorOptions
+    ));
+
     VertWaterfall.superClass._addVizSpecificPropsDialog.call(
       this,
       oTabbedPanelsGadgetInfo
@@ -794,7 +897,12 @@ define([
       wfAxisLabels:        { key: 'axisLabels',       transform: function(v){ return v ? 'on' : 'off'; } },
       wfValuesAxisLabels:  { key: 'valuesAxisLabels', transform: function(v){ return v ? 'on' : 'off'; } },
       wfAxisTitle:         { key: 'axisTitle' },
-      wfNumberFormat:      { key: 'numberFormat' }
+      wfNumberFormat:      { key: 'numberFormat' },
+      wfDataLabelFont:     { key: 'dataLabelFont' },
+      wfDataLabelSize:     { key: 'dataLabelSize',    transform: function(v){ return Math.max(8, Math.min(24, Number(v))); } },
+      wfDataLabelBold:     { key: 'dataLabelBold' },
+      wfDataLabelItalic:   { key: 'dataLabelItalic' },
+      wfDataLabelColor:    { key: 'dataLabelColor' }
     };
     var mapping = WF_GADGET_TO_KEY[sGadgetID];
     if (mapping && oPropChange) {
@@ -843,6 +951,11 @@ define([
         neutralColor: DEFAULTS.neutralColor,
         barGap: DEFAULTS.barGap,
         dataLabels: DEFAULTS.dataLabels,
+        dataLabelFont: DEFAULTS.dataLabelFont,
+        dataLabelSize: DEFAULTS.dataLabelSize,
+        dataLabelBold: DEFAULTS.dataLabelBold,
+        dataLabelItalic: DEFAULTS.dataLabelItalic,
+        dataLabelColor: DEFAULTS.dataLabelColor,
         axisLabels: DEFAULTS.axisLabels,
         valuesAxisLabels: DEFAULTS.valuesAxisLabels,
         axisTitle: DEFAULTS.axisTitle,
