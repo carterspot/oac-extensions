@@ -105,6 +105,27 @@ define([
     }
   }
 
+  // Measure SVG text width by rendering it off-screen and reading
+  // getComputedTextLength(). Used to size the left margin from the actual
+  // widest y-axis label (issue #13) instead of a px-per-char heuristic.
+  function measureTextWidth(text, fontFamily, fontSize) {
+    var probe = d3.select(document.body).append('svg')
+      .style('position', 'absolute')
+      .style('left', '-9999px')
+      .style('top', '-9999px')
+      .attr('width', 1).attr('height', 1);
+    var t = probe.append('text')
+      .attr('font-family', fontFamily || 'sans-serif')
+      .attr('font-size', fontSize || 12)
+      .text(String(text));
+    var node = t.node();
+    var w = node.getComputedTextLength
+      ? node.getComputedTextLength()
+      : String(text).length * (fontSize || 12) * 0.55;
+    probe.remove();
+    return w;
+  }
+
   // The version of our Plugin
   VertWaterfall.VERSION = '1.0.0';
 
@@ -279,11 +300,15 @@ define([
         sizes.push(d.size);
       });
 
-      var longestStringLength = names[0].length;
-      for (let index = 1; index < names.length; index++) {
-        if (longestStringLength < names[index].length) {
-          longestStringLength = names[index].length;
-        }
+      // Reserve enough left margin for the widest *actual* y-axis label —
+      // the previous 6.5*charCount heuristic underestimated capitals and
+      // punctuation (e.g. "Hong Kong S.A.R." was clipped) — issue #13.
+      var Y_AXIS_FONT = 'sans-serif';
+      var Y_AXIS_FONT_SIZE = 12;
+      var widestYLabel = 0;
+      for (let index = 0; index < names.length; index++) {
+        var w = measureTextWidth(names[index], Y_AXIS_FONT, Y_AXIS_FONT_SIZE);
+        if (w > widestYLabel) widestYLabel = w;
       }
 
       // Get the width and height of our container
@@ -291,7 +316,7 @@ define([
         top: 20,
         right: 20,
         bottom: settings.axisTitle ? 60 : 40,
-        left: 6.5 * longestStringLength
+        left: Math.ceil(widestYLabel) + 14
       };
       var width = $(elContainer).width() - 20;
       var height = $(elContainer).height() - 10;
@@ -319,6 +344,8 @@ define([
       var x = getXScale();
       var y = getYScale();
 
+      var bandHeight = (height - margin.bottom) / dataset.length;
+
       setAxis();
       setFilter();
 
@@ -326,7 +353,6 @@ define([
       var rectWrapper = svg
         .append('g')
         .attr('transform', 'translate(' + margin.left + ',' + margin.top + ')');
-      var bandHeight = (height - margin.bottom) / dataset.length;
       var rectHeight = bandHeight * (1 - settings.barGap);
       rectHeight = rectHeight < 2 ? 2 : rectHeight;
       var rectYOffset = (bandHeight - rectHeight) / 2;
@@ -559,12 +585,25 @@ define([
           if (settings.valuesAxisLabels === 'off') return '';
           return formatNumber(v, settings.numberFormat);
         });
+        // When the per-row band gets shorter than a label line, ticks would
+        // stack on top of each other. Show every Nth label so they stay
+        // legible (issue #1). Margin.left is sized for the widest label, so
+        // visible labels won't suddenly need more room.
+        var labelLineHeight = Y_AXIS_FONT_SIZE + 4;
+        var skipEvery = bandHeight > 0
+          ? Math.max(1, Math.ceil(labelLineHeight / bandHeight))
+          : 1;
+        var yTicks = skipEvery > 1
+          ? names.filter(function(_, i) { return i % skipEvery === 0; })
+          : names;
+
         var yAxis = d3.svg
           .axis()
           .scale(y)
           .tickSize(0)
           .tickPadding(10)
           .orient('left')
+          .tickValues(yTicks)
           .tickFormat(function(v) {
             return settings.axisLabels === 'off' ? '' : v;
           });
