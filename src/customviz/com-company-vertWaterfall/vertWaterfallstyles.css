@@ -16,6 +16,15 @@ svg {
   shape-rendering: geometricPrecision;
 }
 
+/* Axis tick text and axis title inherit fill from the SVG's `color`,
+   which the renderer sets based on the container's background luminance
+   so labels stay legible in both light and dark themes (issue #9). */
+.axis text,
+.axis-y text,
+.axis-title {
+  fill: currentColor;
+}
+
 /* Tooltip*/
 div.tooltip {
   position: absolute;

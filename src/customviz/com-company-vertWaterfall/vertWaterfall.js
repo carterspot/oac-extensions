@@ -304,6 +304,11 @@ define([
           height: height
         });
 
+      // Detect dark/light theme by walking up from the container until we find
+      // a non-transparent background, then set the SVG's `color` so axis text
+      // (which uses `fill: currentColor` via CSS) stays legible (issue #9).
+      svg.style('color', detectThemeTextColor(elContainer));
+
       // Define the div for the tooltip
       var tooltip = d3
         .select('body')
@@ -409,8 +414,12 @@ define([
             'translate(' + margin.left + ',' + margin.top + ')'
           );
 
-        var insideFill = settings.dataLabelColor === 'auto' ? 'white' : settings.dataLabelColor;
-        var outsideFill = settings.dataLabelColor === 'auto' ? '#333' : settings.dataLabelColor;
+        // 'auto' mirrors the OAC theme text color so labels stay legible in
+        // both light and dark themes (issue #9 follow-up). Same methodology as
+        // the axis tick labels — pick what the body's `color` style says.
+        var autoFill = detectThemeTextColor(elContainer);
+        var insideFill = settings.dataLabelColor === 'auto' ? autoFill : settings.dataLabelColor;
+        var outsideFill = settings.dataLabelColor === 'auto' ? autoFill : settings.dataLabelColor;
 
         var text = textWrapper
           .selectAll('text')
@@ -593,6 +602,7 @@ define([
             .attr('class', 'axis-title')
             .attr('text-anchor', 'middle')
             .attr('font-size', 12)
+            .attr('fill', 'currentColor')
             .attr(
               'transform',
               'translate(' +
@@ -618,6 +628,29 @@ define([
           .ordinal()
           .rangeRoundBands([0, height - margin.bottom])
           .domain(names);
+      }
+
+      function detectThemeTextColor(el) {
+        // Mirror the body's text color — OAC's theme system sets this on the
+        // document, so it stays in sync with both light and dark themes
+        // without us having to guess from background luminance (issue #9).
+        var bodyColor = window.getComputedStyle(document.body).color;
+        if (bodyColor && bodyColor !== 'rgba(0, 0, 0, 0)' && bodyColor !== 'transparent') {
+          return bodyColor;
+        }
+        // Fallback: walk up from the container looking for a non-transparent
+        // background and pick a contrasting color from its luminance.
+        var node = el;
+        while (node && node !== document.documentElement) {
+          var bg = window.getComputedStyle(node).backgroundColor;
+          var m = bg && bg.match(/\d+(?:\.\d+)?/g);
+          if (m && m.length >= 3 && (m.length < 4 || parseFloat(m[3]) > 0)) {
+            var lum = (0.299 * +m[0] + 0.587 * +m[1] + 0.114 * +m[2]) / 255;
+            return lum > 0.5 ? '#333' : '#E8E8E8';
+          }
+          node = node.parentElement;
+        }
+        return '#333';
       }
 
       function setFilter() {
@@ -792,7 +825,7 @@ define([
       new gadgets.OptionInfo('serif',      'Serif',      'Serif'),
       new gadgets.OptionInfo('monospace',  'Monospace',  'Monospace')
     ];
-    var lblFont = messages.VERTWATERFALL_DATA_LABEL_FONT || 'Label Font';
+    var lblFont = messages.VERTWATERFALL_DATA_LABEL_FONT || 'Data Label Font';
     panel.addChild(new gadgets.SingleSelectGadgetInfo(
       'wfDataLabelFont', lblFont, lblFont,
       new gadgets.GadgetValueProperties(
@@ -807,7 +840,7 @@ define([
     var initialLabelSize = typeof wf.dataLabelSize === 'number' ? wf.dataLabelSize : DEFAULTS.dataLabelSize;
     panel.addChild(new gadgets.SliderGadgetInfo(
       'wfDataLabelSize',
-      messages.VERTWATERFALL_DATA_LABEL_SIZE || 'Label Size',
+      messages.VERTWATERFALL_DATA_LABEL_SIZE || 'Data Label Size',
       'Font size for data labels (px)',
       new gadgets.SliderGadgetValueProperties(euidef.GadgetTypeIDs.SLIDER, initialLabelSize, 8, 24, 1),
       0, false, null,
@@ -817,7 +850,7 @@ define([
     var ckLabelBold = typeof wf.dataLabelBold === 'boolean' ? wf.dataLabelBold : DEFAULTS.dataLabelBold;
     panel.addChild(new gadgets.CheckboxGadgetInfo(
       'wfDataLabelBold',
-      messages.VERTWATERFALL_DATA_LABEL_BOLD || 'Label Bold',
+      messages.VERTWATERFALL_DATA_LABEL_BOLD || 'Data Label Bold',
       'Render data labels in bold',
       new gadgets.CheckboxGadgetValueProperties(euidef.GadgetTypeIDs.CHECKBOX, ckLabelBold, ckLabelBold),
       0, false
@@ -826,7 +859,7 @@ define([
     var ckLabelItalic = typeof wf.dataLabelItalic === 'boolean' ? wf.dataLabelItalic : DEFAULTS.dataLabelItalic;
     panel.addChild(new gadgets.CheckboxGadgetInfo(
       'wfDataLabelItalic',
-      messages.VERTWATERFALL_DATA_LABEL_ITALIC || 'Label Italic',
+      messages.VERTWATERFALL_DATA_LABEL_ITALIC || 'Data Label Italic',
       'Render data labels in italic',
       new gadgets.CheckboxGadgetValueProperties(euidef.GadgetTypeIDs.CHECKBOX, ckLabelItalic, ckLabelItalic),
       0, false
@@ -838,7 +871,7 @@ define([
       new gadgets.OptionInfo('black', 'Black',           'Black'),
       new gadgets.OptionInfo('#444',  'Dark Gray',       'Dark Gray')
     ];
-    var lblLabelColor = messages.VERTWATERFALL_DATA_LABEL_COLOR || 'Label Color';
+    var lblLabelColor = messages.VERTWATERFALL_DATA_LABEL_COLOR || 'Data Label Color';
     panel.addChild(new gadgets.SingleSelectGadgetInfo(
       'wfDataLabelColor', lblLabelColor, lblLabelColor,
       new gadgets.GadgetValueProperties(
