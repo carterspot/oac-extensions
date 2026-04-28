@@ -57,6 +57,7 @@ define([
     valuesAxisLabels: 'on',
     axisTitle: '',
     numberFormat: 'auto',
+    currencySymbol: '$',
     dataLabelContent: 'valueDelta',
     showStartTotal: true,
     showEndTotal: true,
@@ -81,6 +82,7 @@ define([
       valuesAxisLabels: wf.valuesAxisLabels || DEFAULTS.valuesAxisLabels,
       axisTitle: typeof wf.axisTitle === 'string' ? wf.axisTitle : DEFAULTS.axisTitle,
       numberFormat: wf.numberFormat || DEFAULTS.numberFormat,
+      currencySymbol: typeof wf.currencySymbol === 'string' ? wf.currencySymbol : DEFAULTS.currencySymbol,
       dataLabelContent: wf.dataLabelContent || DEFAULTS.dataLabelContent,
       showStartTotal: typeof wf.showStartTotal === 'boolean' ? wf.showStartTotal : DEFAULTS.showStartTotal,
       showEndTotal: typeof wf.showEndTotal === 'boolean' ? wf.showEndTotal : DEFAULTS.showEndTotal,
@@ -88,7 +90,7 @@ define([
     };
   }
 
-  function formatNumber(val, fmt) {
+  function formatNumber(val, fmt, currencySymbol) {
     var n = Number.parseFloat(val);
     if (isNaN(n)) return String(val);
     switch (fmt) {
@@ -99,11 +101,14 @@ define([
         if (abs >= 1e3) return (n / 1e3).toFixed(2).replace(/\.?0+$/, '') + 'K';
         return n.toLocaleString();
       }
-      case 'currency':
-        return '$' + n.toLocaleString(undefined, {
+      case 'currency': {
+        var sym = (typeof currencySymbol === 'string' && currencySymbol) ? currencySymbol : '$';
+        var prefix = n < 0 ? '-' + sym : sym;
+        return prefix + Math.abs(n).toLocaleString(undefined, {
           minimumFractionDigits: 2,
           maximumFractionDigits: 2
         });
+      }
       case 'percent':
         return (n * 100).toFixed(2).replace(/\.?0+$/, '') + '%';
       case 'comma':
@@ -430,7 +435,7 @@ define([
           }
           var deltaTxt = (d._isTotal || d._prevDataSize === null)
             ? '0'
-            : formatNumber(d.size - d._prevDataSize, settings.numberFormat);
+            : formatNumber(d.size - d._prevDataSize, settings.numberFormat, settings.currencySymbol);
           tooltip
             .transition()
             .duration(200)
@@ -448,7 +453,7 @@ define([
                  ? ''
                  : "style='border-bottom: 1px solid black;'"
              }>Value</th>
-             <td>${formatNumber(d.size, settings.numberFormat)} (${deltaTxt})</td>
+             <td>${formatNumber(d.size, settings.numberFormat, settings.currencySymbol)} (${deltaTxt})</td>
            </tr>
            ${tempTooltip}
          </table>
@@ -564,7 +569,7 @@ define([
             'font-weight': '700',
             fill: gtFill
           })
-          .text('Total: ' + formatNumber(grandTotal, settings.numberFormat));
+          .text('Total: ' + formatNumber(grandTotal, settings.numberFormat, settings.currencySymbol));
       }
 
       // *** METHODS SECTION ***
@@ -640,7 +645,7 @@ define([
       // its value regardless of the content selector — useful when the user
       // picks "Delta only" or "Cumulative" but still wants the endpoints.
       function buildLabel(d) {
-        var value = formatNumber(d.size, settings.numberFormat);
+        var value = formatNumber(d.size, settings.numberFormat, settings.currencySymbol);
         if (d._isTotal) return value;
         var isFirst = d._dataIdx === 0;
         var isLast = d._dataIdx === dataset.length - 1;
@@ -654,7 +659,7 @@ define([
           case 'deltaOnly': {
             if (!hasPrev) return '';
             var raw = d.size - d._prevDataSize;
-            var delta = formatNumber(raw, settings.numberFormat);
+            var delta = formatNumber(raw, settings.numberFormat, settings.currencySymbol);
             if (raw > 0 && delta.charAt(0) !== '+') delta = '+' + delta;
             return '(' + delta + ')';
           }
@@ -664,12 +669,12 @@ define([
             return (Math.round(pct * 10) / 10) + '%';
           }
           case 'cumulative':
-            return formatNumber(d._cumulative, settings.numberFormat);
+            return formatNumber(d._cumulative, settings.numberFormat, settings.currencySymbol);
           case 'valueDelta':
           default: {
             if (!hasPrev) return value;
             var raw2 = d.size - d._prevDataSize;
-            var delta2 = formatNumber(raw2, settings.numberFormat);
+            var delta2 = formatNumber(raw2, settings.numberFormat, settings.currencySymbol);
             if (raw2 > 0 && delta2.charAt(0) !== '+') delta2 = '+' + delta2;
             return value + ' (' + delta2 + ')';
           }
@@ -679,7 +684,7 @@ define([
       function setAxis() {
         var xAxis = d3.svg.axis().scale(x).tickFormat(function(v) {
           if (settings.valuesAxisLabels === 'off') return '';
-          return formatNumber(v, settings.numberFormat);
+          return formatNumber(v, settings.numberFormat, settings.currencySymbol);
         });
         // When the per-row band gets shorter than a label line, ticks would
         // stack on top of each other. Show every Nth label so they stay
@@ -718,7 +723,7 @@ define([
           .attr('class', 'axis')
           .call(xAxis);
 
-        var yAxisG = svg
+        svg
           .append('g')
           .attr(
             'transform',
@@ -726,19 +731,10 @@ define([
           )
           .attr('class', 'axis-y')
           .call(yAxis);
-
-        // d3 v3 places ordinal-scale tick groups at the band START. Bars are
-        // centered in their bands, so shift each tick group down by
-        // bandHeight/2 to put its anchor at the band CENTER. d3's default
-        // text dy='0.32em' inside the group then puts the visual center of
-        // the label exactly on the bar's vertical center.
-        yAxisG.selectAll('.tick').each(function() {
-          var existing = d3.select(this).attr('transform') || '';
-          var match = existing.match(/translate\(([^,]+),([^)]+)\)/);
-          var tx = match ? +match[1] : 0;
-          var ty = match ? +match[2] : 0;
-          d3.select(this).attr('transform', 'translate(' + tx + ',' + (ty + bandHeight / 2) + ')');
-        });
+        // Y-axis tick alignment with bar centers: tracked in #19. Two attempts
+        // (dominant-baseline:central, tick-group shift by bandHeight/2) both
+        // failed to land on-target. Reverted to d3 default until the actual
+        // axis-tick-y offset is reverse-engineered from a live render.
 
         if (settings.axisTitle) {
           svg
@@ -963,6 +959,19 @@ define([
       fmtOptions
     ));
 
+    // Currency symbol — used when Number Format is 'currency' (#5).
+    panel.addChild(new gadgets.TextGadgetInfo(
+      'wfCurrencySymbol',
+      messages.VERTWATERFALL_CURRENCY_SYMBOL || 'Currency Symbol',
+      'Symbol prefixed to currency-formatted values (e.g. $, €, £, ¥)',
+      new gadgets.GadgetValueProperties(
+        euidef.GadgetTypeIDs.TEXT_FIELD,
+        typeof wf.currencySymbol === 'string' ? wf.currencySymbol : DEFAULTS.currencySymbol
+      ),
+      0, false, null,
+      { sPlaceholderText: '$' }
+    ));
+
     // Data label font controls
     var labelFontOptions = [
       new gadgets.OptionInfo('sans-serif', 'Sans-serif', 'Sans-serif'),
@@ -1075,6 +1084,18 @@ define([
       0, false
     ));
 
+    // Reset to defaults trigger (#4). Clicking this checkbox clears all
+    // waterfall.* keys from viewConfig so settings fall back to DEFAULTS.
+    // The checkbox itself is stateless — _handlePropChange treats any
+    // change as the reset signal.
+    panel.addChild(new gadgets.CheckboxGadgetInfo(
+      'wfResetDefaults',
+      messages.VERTWATERFALL_RESET_DEFAULTS || 'Reset to defaults',
+      'Click to clear all waterfall settings and restore the defaults',
+      new gadgets.CheckboxGadgetValueProperties(euidef.GadgetTypeIDs.CHECKBOX, false, false),
+      0, false
+    ));
+
     VertWaterfall.superClass._addVizSpecificPropsDialog.call(
       this,
       oTabbedPanelsGadgetInfo
@@ -1114,6 +1135,13 @@ define([
         bUpdateSettings = true;
       }
     }
+    // Reset trigger (#4): clear all waterfall.* keys so settings fall back
+    // to DEFAULTS on next render. We don't store the trigger value itself.
+    if (sGadgetID === 'wfResetDefaults') {
+      conf.waterfall = {};
+      oViewSettings.setViewConfigJSON(dataviz.SettingsNS.CHART, conf);
+      return true;
+    }
     // Map gadget IDs (no dots — ids with dots break aria/knockout bindings) to
     // the keys we store in viewConfig.waterfall.
     var WF_GADGET_TO_KEY = {
@@ -1123,6 +1151,7 @@ define([
       wfValuesAxisLabels:  { key: 'valuesAxisLabels', transform: function(v){ return v ? 'on' : 'off'; } },
       wfAxisTitle:         { key: 'axisTitle' },
       wfNumberFormat:      { key: 'numberFormat' },
+      wfCurrencySymbol:    { key: 'currencySymbol' },
       wfDataLabelFont:     { key: 'dataLabelFont' },
       wfDataLabelSize:     { key: 'dataLabelSize',    transform: function(v){ return Math.max(8, Math.min(24, Number(v))); } },
       wfDataLabelBold:     { key: 'dataLabelBold' },
@@ -1189,6 +1218,7 @@ define([
         valuesAxisLabels: DEFAULTS.valuesAxisLabels,
         axisTitle: DEFAULTS.axisTitle,
         numberFormat: DEFAULTS.numberFormat,
+        currencySymbol: DEFAULTS.currencySymbol,
         dataLabelContent: DEFAULTS.dataLabelContent,
         showStartTotal: DEFAULTS.showStartTotal,
         showEndTotal: DEFAULTS.showEndTotal,

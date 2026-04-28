@@ -6,7 +6,7 @@ Custom visualization plugins for Oracle Analytics Cloud / Desktop.
 
 | ID | Description | Status |
 |---|---|---|
-| `com-company-vertWaterfall` | Horizontal (vertical-axis) waterfall chart with side-panel controls for bar gap, data labels, axis labels, axis title, and number format | v3 — shipped |
+| [`com-company-vertWaterfall`](docs/vertWaterfall.md) | Horizontal (vertical-axis) waterfall chart with extensive side-panel controls — see [docs/vertWaterfall.md](docs/vertWaterfall.md) | v3 shipped; v4 in development |
 
 ## Quickstart
 
