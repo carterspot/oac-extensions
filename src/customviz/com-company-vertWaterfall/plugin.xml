@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<obiplugin xmlns="http://plugin.frameworks.tech.bi.oracle" id="com-company-vertWaterfall" name="com-company-vertWaterfall" version="1.0.0.1547829179000" optimized="false" optimizable="true" category="customviz" categoryVersion="1.0.0.1547829178628">
+    <resources>
+        <resource-folder id="nls" path="nls" optimizable="true">
+            <extensions>
+                <extension name="js" resource-type="script"/>
+            </extensions>
+        </resource-folder>
+        <resource type="script" id="vertWaterfall" path="vertWaterfall.js"/>
+        <resource type="script" id="vertWaterfalldatamodelhandler" path="vertWaterfalldatamodelhandler.js"/>
+        <resource type="binary" id="vertWaterfallIcon" path="vertWaterfallIcon.png"/>
+        <resource type="css" id="vertWaterfallstyles" path="vertWaterfallstyles.css"/>
+    </resources>
+    <extensions>
+        <extension id="com.company.vertWaterfall" point-id="oracle.bi.tech.plugin.visualization" version="1.0.0">
+            <configuration>{"host":{"script":{"module":"com-company-vertWaterfall/vertWaterfall","method":"createClientComponent"},"vizSettings":{"_version":"1.0.0","viewConfig":{"viz:chart":{"type":"com.company.vertWaterfall","dataValues":true}}}},"resourceBundle":"com-company-vertWaterfall/nls/messages","properties":{"displayName":{"key":"VERTWATERFALL_DISPLAY_NAME","default":"Vert Waterfall"},"shortDisplayName":{"key":"VERTWATERFALL_SHORT_DISPLAY_NAME","default":"Vert Waterfall"},"category":{"key":"VERTWATERFALL_CATEGORY","default":"Vert Waterfall"},"categoryOrder":500,"icon":"vertWaterfallIcon","dataModelHandler":"com.company.vertWaterfall.visualizationDatamodelHandler","dataModelGovernor":{"dm1":{"rows":10000,"columns":5000}},"isEmbeddable":false,"isMarkingSupported":false}}</configuration>
+        </extension>
+        <extension id="com.company.vertWaterfall.visualizationDatamodelHandler" point-id="oracle.bi.tech.plugin.visualizationDatamodelHandler" version="1.0.0">
+            <configuration>{"module":"com-company-vertWaterfall/vertWaterfalldatamodelhandler","method":"getHandler","config":{"vizPreference":50,"measureLabelConfig":{"supportedEdges":["color","detail","size"],"defaultEdge":"color","visibility":"hidden"},"edgeConfig":{"measures":{"contentType":"measures","global":{"minCount":1,"maxCount":1,"priority":10},"ui":{"customName":{"key":"VERTWATERFALL_ROW_LABEL","default":"X-Axis"}}},"row":{"contentType":"categorical","global":{"priority":1,"minCount":0,"maxCount":1},"ui":{"customName":{"key":"VERTWATERFALL_ITEM_SIZE","default":"Y-Axis"}},"categorical":{"functionalInfo":["inner","row","categoricalType"]}},"color":{"contentType":"measures","global":{"minCount":0,"maxCount":1,"priority":7}},"size":"none","glyph":"none","detail":{"contentType":"measures","ui":{"customName":{"key":"TOOLTIP_DETAIL_LABEL","default":"Tooltip"},"_forceCustomName":true,"customIcon":"dropTarget_tooltipEdgeIcon"}}}}}</configuration>
+        </extension>
+    </extensions>
+</obiplugin>

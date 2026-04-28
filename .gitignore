@@ -1,0 +1,29 @@
+# Gradle
+.gradle/
+build/
+
+# Build output
+dist/
+
+# Staging dirs used by tools/build-plugin.ps1
+**/_stage*/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS
+Thumbs.db
+.DS_Store
+desktop.ini
+
+# Backups
+*.backup
+*.bak
+*.backup/
+**/*.backup/
+
+# Local-only env or path overrides
+gradle.properties.local
+.env

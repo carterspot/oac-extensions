@@ -1,0 +1,42 @@
+svg {
+  font: 12px sans-serif;
+}
+
+.axis path,
+.axis line {
+  fill: none;
+  stroke: slategray;
+  shape-rendering: crispEdges;
+}
+
+.axis-y path,
+.axis-y line {
+  fill: none;
+  stroke: slategray;
+  shape-rendering: geometricPrecision;
+}
+
+/* Tooltip*/
+div.tooltip {
+  position: absolute;
+  text-align: center;
+  width: auto;
+  height: auto;
+  padding: 8px;
+  font: 12px sans-serif;
+  background: whitesmoke;
+  border: 0px;
+  border-radius: 8px;
+  border-color: gray;
+  pointer-events: none;
+  z-index: 1000;
+}
+
+table.tooltip-table {
+  padding: 5px;
+}
+table.tooltip-table th {
+  color: gray;
+  font-weight: 400;
+  padding: 2px;
+}
