@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<obiplugin xmlns="http://plugin.frameworks.tech.bi.oracle" id="com-company-vertWaterfall" name="com-company-vertWaterfall" version="1.0.0.1547829179000" optimized="false" optimizable="true" category="customviz" categoryVersion="1.0.0.1547829178628">
+<obiplugin xmlns="http://plugin.frameworks.tech.bi.oracle" id="com-company-vertWaterfall" name="com-company-vertWaterfall" version="1.0.0.1714291300000" optimized="false" optimizable="true" category="customviz" categoryVersion="1.0.0.1547829178628">
     <resources>
         <resource-folder id="nls" path="nls" optimizable="true">
             <extensions>

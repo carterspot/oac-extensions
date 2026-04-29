@@ -597,18 +597,31 @@ define([
             return buildLabel(d);
           });
 
-        // Label placement honors `dataLabelPosition` (#7):
-        //   - 'auto' (default): three-way fallback — inside bar → outside-right
-        //     → anchored at chart edge if bar is at the right limit. (#6, #12)
-        //   - 'insideEnd': anchored at bar's right edge inside, insideFill
-        //   - 'outsideEnd': anchored just past bar's right edge, outsideFill
-        //   - 'center': anchored at bar's horizontal middle, insideFill
+        // Label placement honors `dataLabelPosition` (#7). Fill is per-label:
+        // when label sits ON a bar, pick a color that contrasts with that
+        // specific bar's luminance (so user-picked Increase/Decrease/Neutral
+        // colors always have legible labels). When label sits on the chart
+        // background, use the theme text color.
         var plotWidth = width - margin.left - margin.right;
         var labelPos = settings.dataLabelPosition || 'auto';
+        function pickFill(onBarColor, isOnBar) {
+          if (settings.dataLabelColor !== 'auto') return settings.dataLabelColor;
+          if (!isOnBar) return autoFill; // theme text color for chart-bg labels
+          // On a colored bar — pick contrasting based on perceived luminance.
+          var c = String(onBarColor || '').replace('#', '');
+          if (c.length === 3) c = c[0]+c[0]+c[1]+c[1]+c[2]+c[2];
+          if (c.length !== 6) return autoFill;
+          var r = parseInt(c.substr(0,2), 16);
+          var g = parseInt(c.substr(2,2), 16);
+          var b = parseInt(c.substr(4,2), 16);
+          var lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+          return lum > 0.55 ? '#222' : '#FFF';
+        }
         text.each(function(d, i) {
           var node = this;
           var barLeft = waterfallX(d, i);
           var barRight = barLeft + waterfallSize(d, i);
+          var barColor = waterfallColor(d, i);
           var labelRight = textPosition(d, i);
           var maxTspanWidth = 0;
           var tspans = node.getElementsByTagName('tspan');
@@ -618,34 +631,37 @@ define([
           }
 
           if (labelPos === 'insideEnd') {
-            d3.select(node).attr('text-anchor', 'end').attr('fill', insideFill);
+            d3.select(node).attr('text-anchor', 'end').attr('fill', pickFill(barColor, true));
             d3.select(node).selectAll('tspan').attr('x', barRight - 4);
             return;
           }
           if (labelPos === 'outsideEnd') {
-            d3.select(node).attr('text-anchor', 'start').attr('fill', outsideFill);
+            d3.select(node).attr('text-anchor', 'start').attr('fill', pickFill(barColor, false));
             d3.select(node).selectAll('tspan').attr('x', barRight + 4);
             return;
           }
           if (labelPos === 'center') {
-            d3.select(node).attr('text-anchor', 'middle').attr('fill', insideFill);
+            d3.select(node).attr('text-anchor', 'middle').attr('fill', pickFill(barColor, true));
             d3.select(node).selectAll('tspan').attr('x', (barLeft + barRight) / 2);
             return;
           }
 
           // 'auto'
           var fitsInside = labelRight - maxTspanWidth >= barLeft;
-          if (fitsInside) return;
+          if (fitsInside) {
+            d3.select(node).attr('fill', pickFill(barColor, true));
+            return;
+          }
           var fitsOutsideRight = barRight + 4 + maxTspanWidth <= plotWidth;
           if (fitsOutsideRight) {
             d3.select(node)
               .attr('text-anchor', 'start')
-              .attr('fill', outsideFill);
+              .attr('fill', pickFill(barColor, false));
             d3.select(node).selectAll('tspan').attr('x', barRight + 4);
           } else {
             d3.select(node)
               .attr('text-anchor', 'end')
-              .attr('fill', insideFill);
+              .attr('fill', pickFill(barColor, true));
             d3.select(node).selectAll('tspan').attr('x', plotWidth - 2);
           }
         });
@@ -1040,10 +1056,34 @@ define([
       0, false
     ));
 
-    // ColorPickers deferred to a later iteration — COLOR_SWITCHER typeId routes
-    // to TextSwitcherGadgetView which calls getOptionCaptionByValue() on the
-    // value-properties; needs a color-palette OptionInfo array we haven't yet
-    // figured out the right shape for. Render-layer keeps the right defaults.
+    // ColorPickers (#3). Live-probed signature:
+    //   ColorPickerGadgetInfo(id, label, tooltip, valueProps, order, showGear, rules, config)
+    // config = { sDefaultValue, colorPickerOptions }
+    // valueProps = GadgetValueProperties(GadgetTypeIDs.COLOR_PICKER, hexColor)
+    panel.addChild(new gadgets.ColorPickerGadgetInfo(
+      'wfIncreaseColor',
+      messages.VERTWATERFALL_INCREASE_COLOR || 'Increase Color',
+      'Bar color when the value increased from the previous row',
+      new gadgets.GadgetValueProperties(euidef.GadgetTypeIDs.COLOR_PICKER, wf.increaseColor || DEFAULTS.increaseColor),
+      0, false, null,
+      { sDefaultValue: DEFAULTS.increaseColor }
+    ));
+    panel.addChild(new gadgets.ColorPickerGadgetInfo(
+      'wfDecreaseColor',
+      messages.VERTWATERFALL_DECREASE_COLOR || 'Decrease Color',
+      'Bar color when the value decreased from the previous row',
+      new gadgets.GadgetValueProperties(euidef.GadgetTypeIDs.COLOR_PICKER, wf.decreaseColor || DEFAULTS.decreaseColor),
+      0, false, null,
+      { sDefaultValue: DEFAULTS.decreaseColor }
+    ));
+    panel.addChild(new gadgets.ColorPickerGadgetInfo(
+      'wfNeutralColor',
+      messages.VERTWATERFALL_NEUTRAL_COLOR || 'Start, End Color',
+      'Bar color for the first/last bars and for End total',
+      new gadgets.GadgetValueProperties(euidef.GadgetTypeIDs.COLOR_PICKER, wf.neutralColor || DEFAULTS.neutralColor),
+      0, false, null,
+      { sDefaultValue: DEFAULTS.neutralColor }
+    ));
 
     // Text — generic GadgetValueProperties (CalendarViz uses this pattern)
     panel.addChild(new gadgets.TextGadgetInfo(
@@ -1357,6 +1397,9 @@ define([
     // Map gadget IDs (no dots — ids with dots break aria/knockout bindings) to
     // the keys we store in viewConfig.waterfall.
     var WF_GADGET_TO_KEY = {
+      wfIncreaseColor:     { key: 'increaseColor' },
+      wfDecreaseColor:     { key: 'decreaseColor' },
+      wfNeutralColor:      { key: 'neutralColor' },
       wfBarGap:            { key: 'barGap',           transform: function(v){ return Math.max(0, Math.min(95, Number(v))) / 100; } },
       wfDataLabels:        { key: 'dataLabels',       transform: function(v){ return v ? 'on' : 'off'; } },
       wfAxisLabels:        { key: 'axisLabels',       transform: function(v){ return v ? 'on' : 'off'; } },
