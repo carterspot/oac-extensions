@@ -58,10 +58,16 @@ define([
     axisTitle: '',
     numberFormat: 'auto',
     currencySymbol: '$',
+    numberDecimals: 2,
+    numberThousandSep: ',',
+    numberAbbreviation: 'default',
+    numberNegativeStyle: 'minus',
     dataLabelContent: 'valueDelta',
+    dataLabelPosition: 'auto',
     showStartTotal: true,
     showEndTotal: true,
-    showGrandTotal: true
+    showGrandTotal: true,
+    showConnectors: true
   };
 
   function getWaterfallSettings(viz) {
@@ -83,39 +89,91 @@ define([
       axisTitle: typeof wf.axisTitle === 'string' ? wf.axisTitle : DEFAULTS.axisTitle,
       numberFormat: wf.numberFormat || DEFAULTS.numberFormat,
       currencySymbol: typeof wf.currencySymbol === 'string' ? wf.currencySymbol : DEFAULTS.currencySymbol,
+      numberDecimals: typeof wf.numberDecimals === 'number' ? wf.numberDecimals : DEFAULTS.numberDecimals,
+      numberThousandSep: typeof wf.numberThousandSep === 'string' ? wf.numberThousandSep : DEFAULTS.numberThousandSep,
+      numberAbbreviation: wf.numberAbbreviation || DEFAULTS.numberAbbreviation,
+      numberNegativeStyle: wf.numberNegativeStyle || DEFAULTS.numberNegativeStyle,
       dataLabelContent: wf.dataLabelContent || DEFAULTS.dataLabelContent,
+      dataLabelPosition: wf.dataLabelPosition || DEFAULTS.dataLabelPosition,
       showStartTotal: typeof wf.showStartTotal === 'boolean' ? wf.showStartTotal : DEFAULTS.showStartTotal,
       showEndTotal: typeof wf.showEndTotal === 'boolean' ? wf.showEndTotal : DEFAULTS.showEndTotal,
-      showGrandTotal: typeof wf.showGrandTotal === 'boolean' ? wf.showGrandTotal : DEFAULTS.showGrandTotal
+      showGrandTotal: typeof wf.showGrandTotal === 'boolean' ? wf.showGrandTotal : DEFAULTS.showGrandTotal,
+      showConnectors: typeof wf.showConnectors === 'boolean' ? wf.showConnectors : DEFAULTS.showConnectors
     };
   }
 
-  function formatNumber(val, fmt, currencySymbol) {
+  // Format a number per the user's number-format settings. Accepts either a
+  // settings object or, for backward compat, a fmt string + optional symbol.
+  function formatNumber(val, fmtOrSettings, currencySymbol) {
     var n = Number.parseFloat(val);
     if (isNaN(n)) return String(val);
-    switch (fmt) {
-      case 'abbreviated': {
-        var abs = Math.abs(n);
-        if (abs >= 1e9) return (n / 1e9).toFixed(2).replace(/\.?0+$/, '') + 'B';
-        if (abs >= 1e6) return (n / 1e6).toFixed(2).replace(/\.?0+$/, '') + 'M';
-        if (abs >= 1e3) return (n / 1e3).toFixed(2).replace(/\.?0+$/, '') + 'K';
-        return n.toLocaleString();
-      }
-      case 'currency': {
-        var sym = (typeof currencySymbol === 'string' && currencySymbol) ? currencySymbol : '$';
-        var prefix = n < 0 ? '-' + sym : sym;
-        return prefix + Math.abs(n).toLocaleString(undefined, {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2
-        });
-      }
-      case 'percent':
-        return (n * 100).toFixed(2).replace(/\.?0+$/, '') + '%';
-      case 'comma':
-      case 'auto':
-      default:
-        return n.toLocaleString();
+
+    var s;
+    if (typeof fmtOrSettings === 'string') {
+      s = { numberFormat: fmtOrSettings, currencySymbol: currencySymbol };
+    } else {
+      s = fmtOrSettings || {};
     }
+    var fmt = s.numberFormat || 'auto';
+    var decimals = typeof s.numberDecimals === 'number' ? s.numberDecimals : 2;
+    var thousandSep = typeof s.numberThousandSep === 'string' ? s.numberThousandSep : ',';
+    var abbreviation = s.numberAbbreviation || 'default';
+    var negStyle = s.numberNegativeStyle || 'minus';
+    var sym = (typeof s.currencySymbol === 'string' && s.currencySymbol) ? s.currencySymbol : '$';
+
+    // Backward compat: legacy 'abbreviated' preset → auto-abbreviation
+    if (fmt === 'abbreviated') {
+      fmt = 'auto';
+      if (abbreviation === 'default') abbreviation = 'auto';
+    }
+
+    // Step 1 — abbreviation: scale magnitude and pick a suffix
+    var working = n;
+    var suffix = '';
+    function applyAbbr(scale, suf) { working = n / scale; suffix = suf; }
+    switch (abbreviation) {
+      case 'auto': {
+        var abs = Math.abs(n);
+        if (abs >= 1e9) applyAbbr(1e9, 'B');
+        else if (abs >= 1e6) applyAbbr(1e6, 'M');
+        else if (abs >= 1e3) applyAbbr(1e3, 'K');
+        break;
+      }
+      case 'B': applyAbbr(1e9, 'B'); break;
+      case 'M': applyAbbr(1e6, 'M'); break;
+      case 'K': applyAbbr(1e3, 'K'); break;
+      // 'default' — no abbreviation
+    }
+
+    // Step 2 — percent preset multiplies by 100
+    if (fmt === 'percent') working = working * 100;
+
+    // Step 3 — format absolute value with decimals + thousand separator
+    var absStr = formatAbs(Math.abs(working), decimals, thousandSep);
+
+    // Step 4 — assemble with prefix/suffix and negative styling
+    var isNeg = working < 0;
+    var prefix = '';
+    var trailing = '';
+    if (fmt === 'currency') prefix = sym;
+    if (fmt === 'percent') trailing = '%';
+    var body = prefix + absStr + suffix + trailing;
+    if (!isNeg) return body;
+    switch (negStyle) {
+      case 'parens':   return '(' + body + ')';
+      case 'trailing': return body + '-';
+      case 'minus':
+      default:         return '-' + body;
+    }
+  }
+
+  function formatAbs(absN, decimals, sep) {
+    var fixed = absN.toFixed(decimals);
+    var parts = fixed.split('.');
+    var intPart = parts[0];
+    var decPart = parts[1];
+    if (sep) intPart = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, sep);
+    return decimals > 0 && decPart ? intPart + '.' + decPart : intPart;
   }
 
   // Measure SVG text width by rendering it off-screen and reading
@@ -435,7 +493,7 @@ define([
           }
           var deltaTxt = (d._isTotal || d._prevDataSize === null)
             ? '0'
-            : formatNumber(d.size - d._prevDataSize, settings.numberFormat, settings.currencySymbol);
+            : formatNumber(d.size - d._prevDataSize, settings);
           tooltip
             .transition()
             .duration(200)
@@ -453,7 +511,7 @@ define([
                  ? ''
                  : "style='border-bottom: 1px solid black;'"
              }>Value</th>
-             <td>${formatNumber(d.size, settings.numberFormat, settings.currencySymbol)} (${deltaTxt})</td>
+             <td>${formatNumber(d.size, settings)} (${deltaTxt})</td>
            </tr>
            ${tempTooltip}
          </table>
@@ -469,6 +527,28 @@ define([
             .duration(500)
             .style('opacity', 0);
         });
+
+      // Waterfall connector lines (#17). For each pair of adjacent rows, draw
+      // a vertical dashed segment at the SHARED value (= renderRows[i].size)
+      // between the bottom of bar i and the top of bar i+1. Visually echoes
+      // a classic financial waterfall.
+      if (settings.showConnectors && renderRows.length > 1) {
+        var connectorWrapper = svg.append('g')
+          .attr('transform', 'translate(' + margin.left + ',' + margin.top + ')');
+        for (var ci = 0; ci < renderRows.length - 1; ci++) {
+          var sharedX = x(renderRows[ci].size);
+          var yTop = ci * bandHeight + rectYOffset + rectHeight;
+          var yBottom = (ci + 1) * bandHeight + rectYOffset;
+          connectorWrapper.append('line')
+            .attr({
+              x1: sharedX, x2: sharedX,
+              y1: yTop, y2: yBottom
+            })
+            .attr('stroke', '#888')
+            .attr('stroke-width', 1)
+            .attr('stroke-dasharray', '2 2');
+        }
+      }
 
       if (rectHeight > settings.dataLabelSize && settings.dataLabels === 'on') {
         var textWrapper = svg
@@ -517,13 +597,14 @@ define([
             return buildLabel(d);
           });
 
-        // Three-way label placement (issues #6, #12):
-        //   1. Fits inside the bar → leave it (anchor end at barRight - 10).
-        //   2. Doesn't fit, but there's room outside-right → flip there.
-        //   3. Wouldn't fit outside either (bar near chart's right edge) →
-        //      anchor at the chart's right edge so the label stays on-screen,
-        //      using insideFill since most of it overlays the bar.
+        // Label placement honors `dataLabelPosition` (#7):
+        //   - 'auto' (default): three-way fallback — inside bar → outside-right
+        //     → anchored at chart edge if bar is at the right limit. (#6, #12)
+        //   - 'insideEnd': anchored at bar's right edge inside, insideFill
+        //   - 'outsideEnd': anchored just past bar's right edge, outsideFill
+        //   - 'center': anchored at bar's horizontal middle, insideFill
         var plotWidth = width - margin.left - margin.right;
+        var labelPos = settings.dataLabelPosition || 'auto';
         text.each(function(d, i) {
           var node = this;
           var barLeft = waterfallX(d, i);
@@ -535,6 +616,24 @@ define([
             var w = tspans[k].getComputedTextLength ? tspans[k].getComputedTextLength() : 0;
             if (w > maxTspanWidth) maxTspanWidth = w;
           }
+
+          if (labelPos === 'insideEnd') {
+            d3.select(node).attr('text-anchor', 'end').attr('fill', insideFill);
+            d3.select(node).selectAll('tspan').attr('x', barRight - 4);
+            return;
+          }
+          if (labelPos === 'outsideEnd') {
+            d3.select(node).attr('text-anchor', 'start').attr('fill', outsideFill);
+            d3.select(node).selectAll('tspan').attr('x', barRight + 4);
+            return;
+          }
+          if (labelPos === 'center') {
+            d3.select(node).attr('text-anchor', 'middle').attr('fill', insideFill);
+            d3.select(node).selectAll('tspan').attr('x', (barLeft + barRight) / 2);
+            return;
+          }
+
+          // 'auto'
           var fitsInside = labelRight - maxTspanWidth >= barLeft;
           if (fitsInside) return;
           var fitsOutsideRight = barRight + 4 + maxTspanWidth <= plotWidth;
@@ -569,7 +668,7 @@ define([
             'font-weight': '700',
             fill: gtFill
           })
-          .text('Total: ' + formatNumber(grandTotal, settings.numberFormat, settings.currencySymbol));
+          .text('Total: ' + formatNumber(grandTotal, settings));
       }
 
       // *** METHODS SECTION ***
@@ -645,7 +744,7 @@ define([
       // its value regardless of the content selector — useful when the user
       // picks "Delta only" or "Cumulative" but still wants the endpoints.
       function buildLabel(d) {
-        var value = formatNumber(d.size, settings.numberFormat, settings.currencySymbol);
+        var value = formatNumber(d.size, settings);
         if (d._isTotal) return value;
         var isFirst = d._dataIdx === 0;
         var isLast = d._dataIdx === dataset.length - 1;
@@ -659,7 +758,7 @@ define([
           case 'deltaOnly': {
             if (!hasPrev) return '';
             var raw = d.size - d._prevDataSize;
-            var delta = formatNumber(raw, settings.numberFormat, settings.currencySymbol);
+            var delta = formatNumber(raw, settings);
             if (raw > 0 && delta.charAt(0) !== '+') delta = '+' + delta;
             return '(' + delta + ')';
           }
@@ -669,12 +768,12 @@ define([
             return (Math.round(pct * 10) / 10) + '%';
           }
           case 'cumulative':
-            return formatNumber(d._cumulative, settings.numberFormat, settings.currencySymbol);
+            return formatNumber(d._cumulative, settings);
           case 'valueDelta':
           default: {
             if (!hasPrev) return value;
             var raw2 = d.size - d._prevDataSize;
-            var delta2 = formatNumber(raw2, settings.numberFormat, settings.currencySymbol);
+            var delta2 = formatNumber(raw2, settings);
             if (raw2 > 0 && delta2.charAt(0) !== '+') delta2 = '+' + delta2;
             return value + ' (' + delta2 + ')';
           }
@@ -684,13 +783,18 @@ define([
       function setAxis() {
         var xAxis = d3.svg.axis().scale(x).tickFormat(function(v) {
           if (settings.valuesAxisLabels === 'off') return '';
-          return formatNumber(v, settings.numberFormat, settings.currencySymbol);
+          return formatNumber(v, settings);
         });
-        // When the per-row band gets shorter than a label line, ticks would
-        // stack on top of each other. Show every Nth label so they stay
-        // legible (issue #1). Margin.left is sized for the widest label, so
-        // visible labels won't suddenly need more room.
-        var labelLineHeight = Y_AXIS_FONT_SIZE + 4;
+        // Auto-shrink y-axis font when bandHeight is too small to fit the
+        // default 12pt label. Keeps text inside its band so the visual
+        // center actually sits where the bar's center is in dense charts.
+        // Floor at 8pt — anything smaller is unreadable. Margin.left was
+        // sized using the max font (12), so smaller font won't need more
+        // horizontal room.
+        var effectiveAxisFontSize = Math.max(8, Math.min(Y_AXIS_FONT_SIZE, Math.floor(bandHeight - 4)));
+        // Skip every Nth tick when bands are too thin even for the shrunken
+        // font (issue #1). Margin.left already covers the widest label.
+        var labelLineHeight = effectiveAxisFontSize + 2;
         var skipEvery = bandHeight > 0
           ? Math.max(1, Math.ceil(labelLineHeight / bandHeight))
           : 1;
@@ -723,7 +827,7 @@ define([
           .attr('class', 'axis')
           .call(xAxis);
 
-        svg
+        var yAxisG = svg
           .append('g')
           .attr(
             'transform',
@@ -731,10 +835,21 @@ define([
           )
           .attr('class', 'axis-y')
           .call(yAxis);
-        // Y-axis tick alignment with bar centers: tracked in #19. Two attempts
-        // (dominant-baseline:central, tick-group shift by bandHeight/2) both
-        // failed to land on-target. Reverted to d3 default until the actual
-        // axis-tick-y offset is reverse-engineered from a live render.
+        // Apply the (possibly shrunken) effective font size so labels fit
+        // their bands.
+        yAxisG.selectAll('.tick text')
+          .style('font-size', effectiveAxisFontSize + 'px');
+        // d3 v3's ordinal-scale tick positioning uses different bandwidth
+        // math than our bar code (probed live: tick spacing 19 vs bar spacing
+        // bandHeight). Bypass it by re-anchoring each tick group to the row's
+        // bar center: i*bandHeight + bandHeight/2. (#19)
+        yAxisG.selectAll('.tick').each(function(d) {
+          var rowIdx = names.indexOf(d);
+          if (rowIdx >= 0) {
+            d3.select(this).attr('transform',
+              'translate(0,' + (rowIdx * bandHeight + bandHeight / 2) + ')');
+          }
+        });
 
         if (settings.axisTitle) {
           svg
@@ -880,11 +995,12 @@ define([
     var oNumFmt     = obs(wf.numberFormat || DEFAULTS.numberFormat, 'numberFormat');
 
     // Use the framework helper to get/force a real panel container.
-    // CalendarViz uses this exact pattern. Adding to the GENERAL panel keeps
-    // our controls alongside the standard Title/Subtitle/Footnote section.
+    // Issue #20: moved from GENERAL to STYLE so our settings sit in their
+    // own tab instead of mixing with Title/Subtitle/Footnote. Eventually
+    // distribute across STYLE/AXIS/NUMBERFORMAT/LAYER_LABELS/TOTALS.
     var panel = gadgetdialog.forcePanelByID(
       oTabbedPanelsGadgetInfo,
-      euidef.GD_PANEL_ID_GENERAL
+      euidef.GD_PANEL_ID_STYLE
     );
 
     // Slider — SliderGadgetValueProperties(typeId, nValue, nMin, nMax, nStep)
@@ -941,11 +1057,10 @@ define([
 
     // SingleSelect — generic GadgetValueProperties + options array as last arg
     var fmtOptions = [
-      new gadgets.OptionInfo('auto',        'Auto',        'Auto'),
-      new gadgets.OptionInfo('comma',       'Number',      'Number'),
-      new gadgets.OptionInfo('abbreviated', 'Abbreviated', 'Abbreviated'),
-      new gadgets.OptionInfo('currency',    'Currency',    'Currency'),
-      new gadgets.OptionInfo('percent',     'Percent',     'Percent')
+      new gadgets.OptionInfo('auto',     'Auto',     'Auto'),
+      new gadgets.OptionInfo('comma',    'Number',   'Number'),
+      new gadgets.OptionInfo('currency', 'Currency', 'Currency'),
+      new gadgets.OptionInfo('percent',  'Percent',  'Percent')
     ];
     var lblFmt = messages.VERTWATERFALL_NUMBER_FORMAT || 'Number Format';
     panel.addChild(new gadgets.SingleSelectGadgetInfo(
@@ -970,6 +1085,74 @@ define([
       ),
       0, false, null,
       { sPlaceholderText: '$' }
+    ));
+
+    // Decimal Places (#18)
+    var initialDecimals = typeof wf.numberDecimals === 'number' ? wf.numberDecimals : DEFAULTS.numberDecimals;
+    panel.addChild(new gadgets.SliderGadgetInfo(
+      'wfNumberDecimals',
+      messages.VERTWATERFALL_NUMBER_DECIMALS || 'Decimal Places',
+      'Number of digits after the decimal point (0–6)',
+      new gadgets.SliderGadgetValueProperties(euidef.GadgetTypeIDs.SLIDER, initialDecimals, 0, 6, 1),
+      0, false, null,
+      { fValueFormatter: function(v) { return String(v); } }
+    ));
+
+    // Thousand Separator (#18)
+    var thousandSepOptions = [
+      new gadgets.OptionInfo(',', 'Comma (1,234)',  'Comma (1,234)'),
+      new gadgets.OptionInfo('.', 'Period (1.234)', 'Period (1.234)'),
+      new gadgets.OptionInfo(' ', 'Space (1 234)',  'Space (1 234)'),
+      new gadgets.OptionInfo('',  'None (1234)',    'None (1234)')
+    ];
+    var lblSep = messages.VERTWATERFALL_NUMBER_THOUSAND_SEP || 'Thousand Separator';
+    panel.addChild(new gadgets.SingleSelectGadgetInfo(
+      'wfNumberThousandSep', lblSep, lblSep,
+      new gadgets.GadgetValueProperties(
+        euidef.GadgetTypeIDs.SINGLE_SELECT,
+        typeof wf.numberThousandSep === 'string' ? wf.numberThousandSep : DEFAULTS.numberThousandSep,
+        { ariaLabel: lblSep }
+      ),
+      0, false,
+      thousandSepOptions
+    ));
+
+    // Abbreviation (#18) — orthogonal to Number Format so Currency + Auto can compose ($1.5M)
+    var abbrOptions = [
+      new gadgets.OptionInfo('default', 'Default (full digits)',  'Default'),
+      new gadgets.OptionInfo('auto',    'Auto (1.5K / 1.5M / 1.5B)', 'Auto'),
+      new gadgets.OptionInfo('K',       'Thousands (K)',           'Thousands'),
+      new gadgets.OptionInfo('M',       'Millions (M)',            'Millions'),
+      new gadgets.OptionInfo('B',       'Billions (B)',            'Billions')
+    ];
+    var lblAbbr = messages.VERTWATERFALL_NUMBER_ABBREVIATION || 'Abbreviation';
+    panel.addChild(new gadgets.SingleSelectGadgetInfo(
+      'wfNumberAbbreviation', lblAbbr, lblAbbr,
+      new gadgets.GadgetValueProperties(
+        euidef.GadgetTypeIDs.SINGLE_SELECT,
+        wf.numberAbbreviation || DEFAULTS.numberAbbreviation,
+        { ariaLabel: lblAbbr }
+      ),
+      0, false,
+      abbrOptions
+    ));
+
+    // Negative Values style (#18)
+    var negStyleOptions = [
+      new gadgets.OptionInfo('minus',    '-123',  '-123'),
+      new gadgets.OptionInfo('parens',   '(123)', '(123)'),
+      new gadgets.OptionInfo('trailing', '123-',  '123-')
+    ];
+    var lblNeg = messages.VERTWATERFALL_NUMBER_NEGATIVE_STYLE || 'Negative Values';
+    panel.addChild(new gadgets.SingleSelectGadgetInfo(
+      'wfNumberNegativeStyle', lblNeg, lblNeg,
+      new gadgets.GadgetValueProperties(
+        euidef.GadgetTypeIDs.SINGLE_SELECT,
+        wf.numberNegativeStyle || DEFAULTS.numberNegativeStyle,
+        { ariaLabel: lblNeg }
+      ),
+      0, false,
+      negStyleOptions
     ));
 
     // Data label font controls
@@ -1056,6 +1239,25 @@ define([
       labelContentOptions
     ));
 
+    // Data Label Position (#7) — overrides the auto-flip post-pass
+    var labelPositionOptions = [
+      new gadgets.OptionInfo('auto',       'Auto',         'Auto'),
+      new gadgets.OptionInfo('insideEnd',  'Inside end',   'Inside end'),
+      new gadgets.OptionInfo('outsideEnd', 'Outside end',  'Outside end'),
+      new gadgets.OptionInfo('center',     'Center',       'Center')
+    ];
+    var lblPosition = messages.VERTWATERFALL_DATA_LABEL_POSITION || 'Data Label Position';
+    panel.addChild(new gadgets.SingleSelectGadgetInfo(
+      'wfDataLabelPosition', lblPosition, lblPosition,
+      new gadgets.GadgetValueProperties(
+        euidef.GadgetTypeIDs.SINGLE_SELECT,
+        wf.dataLabelPosition || DEFAULTS.dataLabelPosition,
+        { ariaLabel: lblPosition }
+      ),
+      0, false,
+      labelPositionOptions
+    ));
+
     // Start / End total bars (#15)
     var ckStartTotal = typeof wf.showStartTotal === 'boolean' ? wf.showStartTotal : DEFAULTS.showStartTotal;
     panel.addChild(new gadgets.CheckboxGadgetInfo(
@@ -1081,6 +1283,16 @@ define([
       messages.VERTWATERFALL_SHOW_GRAND_TOTAL || 'Show Grand Total',
       'Render a static grand-total label in the bottom-right of the plot area',
       new gadgets.CheckboxGadgetValueProperties(euidef.GadgetTypeIDs.CHECKBOX, ckGrandTotal, ckGrandTotal),
+      0, false
+    ));
+
+    // Connector lines between adjacent bars (#17)
+    var ckConnectors = typeof wf.showConnectors === 'boolean' ? wf.showConnectors : DEFAULTS.showConnectors;
+    panel.addChild(new gadgets.CheckboxGadgetInfo(
+      'wfShowConnectors',
+      messages.VERTWATERFALL_SHOW_CONNECTORS || 'Show Connectors',
+      'Draw thin dashed lines connecting consecutive bars at their shared value',
+      new gadgets.CheckboxGadgetValueProperties(euidef.GadgetTypeIDs.CHECKBOX, ckConnectors, ckConnectors),
       0, false
     ));
 
@@ -1152,6 +1364,10 @@ define([
       wfAxisTitle:         { key: 'axisTitle' },
       wfNumberFormat:      { key: 'numberFormat' },
       wfCurrencySymbol:    { key: 'currencySymbol' },
+      wfNumberDecimals:    { key: 'numberDecimals',  transform: function(v){ return Math.max(0, Math.min(6, Number(v))); } },
+      wfNumberThousandSep: { key: 'numberThousandSep' },
+      wfNumberAbbreviation:{ key: 'numberAbbreviation' },
+      wfNumberNegativeStyle:{ key: 'numberNegativeStyle' },
       wfDataLabelFont:     { key: 'dataLabelFont' },
       wfDataLabelSize:     { key: 'dataLabelSize',    transform: function(v){ return Math.max(8, Math.min(24, Number(v))); } },
       wfDataLabelBold:     { key: 'dataLabelBold' },
@@ -1160,7 +1376,9 @@ define([
       wfDataLabelContent:  { key: 'dataLabelContent' },
       wfShowStartTotal:    { key: 'showStartTotal' },
       wfShowEndTotal:      { key: 'showEndTotal' },
-      wfShowGrandTotal:    { key: 'showGrandTotal' }
+      wfShowGrandTotal:    { key: 'showGrandTotal' },
+      wfDataLabelPosition: { key: 'dataLabelPosition' },
+      wfShowConnectors:    { key: 'showConnectors' }
     };
     var mapping = WF_GADGET_TO_KEY[sGadgetID];
     if (mapping && oPropChange) {
@@ -1219,10 +1437,16 @@ define([
         axisTitle: DEFAULTS.axisTitle,
         numberFormat: DEFAULTS.numberFormat,
         currencySymbol: DEFAULTS.currencySymbol,
+        numberDecimals: DEFAULTS.numberDecimals,
+        numberThousandSep: DEFAULTS.numberThousandSep,
+        numberAbbreviation: DEFAULTS.numberAbbreviation,
+        numberNegativeStyle: DEFAULTS.numberNegativeStyle,
         dataLabelContent: DEFAULTS.dataLabelContent,
+        dataLabelPosition: DEFAULTS.dataLabelPosition,
         showStartTotal: DEFAULTS.showStartTotal,
         showEndTotal: DEFAULTS.showEndTotal,
-        showGrandTotal: DEFAULTS.showGrandTotal
+        showGrandTotal: DEFAULTS.showGrandTotal,
+        showConnectors: DEFAULTS.showConnectors
       };
       bUpdated = true;
     }
