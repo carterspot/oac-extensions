@@ -1,0 +1,47 @@
+svg {
+  font: 12px sans-serif;
+}
+
+.cfw-axis path,
+.cfw-axis line {
+  fill: none;
+  stroke: slategray;
+  shape-rendering: crispEdges;
+}
+
+.cfw-axis-y path,
+.cfw-axis-y line {
+  fill: none;
+  stroke: slategray;
+  shape-rendering: geometricPrecision;
+}
+
+.cfw-axis text,
+.cfw-axis-y text,
+.cfw-axis-title,
+.cfw-category-label,
+.cfw-subtotal-label {
+  fill: currentColor;
+}
+
+.cfw-category-label {
+  font-weight: 700;
+}
+
+.cfw-subtotal-label {
+  font-weight: 700;
+}
+
+div.cfw-tooltip {
+  position: absolute;
+  text-align: center;
+  width: auto;
+  height: auto;
+  padding: 8px;
+  font: 12px sans-serif;
+  background: whitesmoke;
+  border: 0;
+  border-radius: 8px;
+  pointer-events: none;
+  z-index: 1000;
+}
