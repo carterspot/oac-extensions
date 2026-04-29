@@ -5,15 +5,15 @@ define([
   'obitech-report/vizdatamodelsmanager'
 ], function(jsx, datamodelshapes, genericDataModelHandler, vdm) {
   'use strict';
-  var cashFlowWaterfallDataModelHandler = {};
+  var advWaterfallDataModelHandler = {};
 
-  function CashFlowWaterfallDataModelHandler(oConfig, sId, sDisplayName, sOrigin, sVersion) {
-    CashFlowWaterfallDataModelHandler.baseConstructor.call(this, oConfig, sId, sDisplayName, sOrigin, sVersion);
+  function AdvWaterfallDataModelHandler(oConfig, sId, sDisplayName, sOrigin, sVersion) {
+    AdvWaterfallDataModelHandler.baseConstructor.call(this, oConfig, sId, sDisplayName, sOrigin, sVersion);
   }
-  jsx.extend(CashFlowWaterfallDataModelHandler, genericDataModelHandler.GenericDataModelHandler);
-  cashFlowWaterfallDataModelHandler.CashFlowWaterfallDataModelHandler = CashFlowWaterfallDataModelHandler;
+  jsx.extend(AdvWaterfallDataModelHandler, genericDataModelHandler.GenericDataModelHandler);
+  advWaterfallDataModelHandler.AdvWaterfallDataModelHandler = AdvWaterfallDataModelHandler;
 
-  CashFlowWaterfallDataModelHandler.prototype.getLogicalMapper = function() {
+  AdvWaterfallDataModelHandler.prototype.getLogicalMapper = function() {
     var oData = new datamodelshapes.PhysicalPlacement(datamodelshapes.Physical.DATA);
     var oRow = new datamodelshapes.PhysicalPlacement(datamodelshapes.Physical.ROW);
     var oMapper = new vdm.Mapper();
@@ -33,9 +33,9 @@ define([
     return oMapper;
   };
 
-  cashFlowWaterfallDataModelHandler.getHandler = function(extensionPointName, config) {
-    return new CashFlowWaterfallDataModelHandler(config, extensionPointName);
+  advWaterfallDataModelHandler.getHandler = function(extensionPointName, config) {
+    return new AdvWaterfallDataModelHandler(config, extensionPointName);
   };
 
-  return cashFlowWaterfallDataModelHandler;
+  return advWaterfallDataModelHandler;
 });

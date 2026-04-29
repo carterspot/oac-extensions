@@ -2,37 +2,37 @@ svg {
   font: 12px sans-serif;
 }
 
-.cfw-axis path,
-.cfw-axis line {
+.adv-axis path,
+.adv-axis line {
   fill: none;
   stroke: slategray;
   shape-rendering: crispEdges;
 }
 
-.cfw-axis-y path,
-.cfw-axis-y line {
+.adv-axis-y path,
+.adv-axis-y line {
   fill: none;
   stroke: slategray;
   shape-rendering: geometricPrecision;
 }
 
-.cfw-axis text,
-.cfw-axis-y text,
-.cfw-axis-title,
-.cfw-category-label,
-.cfw-subtotal-label {
+.adv-axis text,
+.adv-axis-y text,
+.adv-axis-title,
+.adv-category-label,
+.adv-subtotal-label {
   fill: currentColor;
 }
 
-.cfw-category-label {
+.adv-category-label {
   font-weight: 700;
 }
 
-.cfw-subtotal-label {
+.adv-subtotal-label {
   font-weight: 700;
 }
 
-div.cfw-tooltip {
+div.adv-tooltip {
   position: absolute;
   text-align: center;
   width: auto;

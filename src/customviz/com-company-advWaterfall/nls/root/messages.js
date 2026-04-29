@@ -1,0 +1,12 @@
+define({
+  ADVWATERFALL_DISPLAY_NAME: 'Advanced Waterfall',
+  ADVWATERFALL_SHORT_DISPLAY_NAME: 'Adv Waterfall',
+  ADVWATERFALL_CATEGORY: 'Advanced Waterfall',
+  ADVWATERFALL_STEP: 'Step',
+  ADVWATERFALL_VALUE: 'Cumulative Value',
+  ADVWATERFALL_CATEGORY_EDGE: 'Category',
+  TOOLTIP_DETAIL_LABEL: 'Tooltip',
+  ADVWATERFALL_NUMBER_FORMAT: 'Number Format',
+  ADVWATERFALL_BAR_GAP: 'Bar Gap',
+  ADVWATERFALL_SUBTOTAL_COLOR: 'Subtotal Color'
+});

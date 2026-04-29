@@ -12,17 +12,17 @@ define([
   'd3js',
   'obitech-reportservices/events',
   'obitech-appservices/logger',
-  'ojL10n!com-company-cashFlowWaterfall/nls/messages',
+  'ojL10n!com-company-advWaterfall/nls/messages',
   'obitech-framework/messageformat',
-  'css!com-company-cashFlowWaterfall/cashFlowWaterfallstyles'
+  'css!com-company-advWaterfall/advWaterfallstyles'
 ], function(
   $, jsx, data, gadgets, euidef, gadgetdialog, ko, dataviz,
   legendandvizcontainer, datamodelshapes, d3, events, logger, messages
 ) {
   'use strict';
 
-  var MODULE_NAME = 'com-company-cashFlowWaterfall/cashFlowWaterfall';
-  jsx.assertAllNotNullExceptLastN(arguments, 'cashFlowWaterfall.js arguments', 2);
+  var MODULE_NAME = 'com-company-advWaterfall/advWaterfall';
+  jsx.assertAllNotNullExceptLastN(arguments, 'advWaterfall.js arguments', 2);
   var _logger = new logger.Logger(MODULE_NAME);
 
   var DEFAULTS = {
@@ -38,7 +38,7 @@ define([
 
   function getSettings(viz) {
     var cfg = (viz.getViewConfig && viz.getViewConfig()) || {};
-    var w = cfg.cashFlow || {};
+    var w = cfg.advWaterfall || {};
     return {
       barGap: typeof w.barGap === 'number' ? w.barGap : DEFAULTS.barGap,
       subtotalColor: w.subtotalColor || DEFAULTS.subtotalColor,
@@ -122,14 +122,14 @@ define([
     return w;
   }
 
-  CashFlowWaterfall.VERSION = '1.0.0';
+  AdvWaterfall.VERSION = '1.0.0';
 
-  function CashFlowWaterfall(sID, sDisplayName, sOrigin, sVersion) {
-    CashFlowWaterfall.baseConstructor.call(this, sID, sDisplayName, sOrigin, sVersion);
+  function AdvWaterfall(sID, sDisplayName, sOrigin, sVersion) {
+    AdvWaterfall.baseConstructor.call(this, sID, sDisplayName, sOrigin, sVersion);
   }
-  jsx.extend(CashFlowWaterfall, dataviz.DataVisualization);
+  jsx.extend(AdvWaterfall, dataviz.DataVisualization);
 
-  CashFlowWaterfall.prototype.myGenerateData = function(oDataLayout, ctx) {
+  AdvWaterfall.prototype.myGenerateData = function(oDataLayout, ctx) {
     var oDataModel = this.getRootDataModel();
     if (!oDataModel || !oDataLayout) return null;
     var nRows = oDataLayout.getEdgeExtent(datamodelshapes.Physical.ROW);
@@ -148,7 +148,7 @@ define([
     return aOut.length ? aOut : null;
   };
 
-  CashFlowWaterfall.prototype._render = function(ctx) {
+  AdvWaterfall.prototype._render = function(ctx) {
     try {
       var oDataLayout = ctx.get(dataviz.DataContextProperty.DATA_LAYOUT);
       var elContainer = this.getContainerElem();
@@ -292,7 +292,7 @@ define([
       var yAxisG = svg.append('g')
         .attr('transform', 'translate(' + margin.left + ',' + margin.top + ')');
       yAxisG.selectAll('text').data(renderRows).enter().append('text')
-        .attr('class', function(d) { return d._isSubtotal ? 'cfw-subtotal-label' : ''; })
+        .attr('class', function(d) { return d._isSubtotal ? 'adv-subtotal-label' : ''; })
         .attr('text-anchor', 'end')
         .attr('dominant-baseline', 'central')
         .attr('font-size', Y_FONT_SIZE)
@@ -306,7 +306,7 @@ define([
         return formatNumber(v, settings);
       });
       svg.append('g')
-        .attr('class', 'cfw-axis')
+        .attr('class', 'adv-axis')
         .attr('transform', 'translate(' + margin.left + ',' + (margin.top + (height - margin.bottom - margin.top)) + ')')
         .call(xAxis);
     } finally {
@@ -314,21 +314,21 @@ define([
     }
   };
 
-  CashFlowWaterfall.prototype.render = function(ctx) { this._render(ctx); };
+  AdvWaterfall.prototype.render = function(ctx) { this._render(ctx); };
 
-  CashFlowWaterfall.prototype._isOnlyPhysicalRowEdge = function() { return false; };
+  AdvWaterfall.prototype._isOnlyPhysicalRowEdge = function() { return false; };
 
-  CashFlowWaterfall.prototype._onDefaultColorsSettingsChanged = function() {
+  AdvWaterfall.prototype._onDefaultColorsSettingsChanged = function() {
     var v = this.assertOrCreateVizContext();
     this._render(this.createRenderingContext(v));
   };
 
-  CashFlowWaterfall.prototype.resizeVisualization = function(dim, v) {
+  AdvWaterfall.prototype.resizeVisualization = function(dim, v) {
     this._render(this.createRenderingContext(v));
   };
 
   function createClientComponent(sID, sDisplayName, sOrigin) {
-    return new CashFlowWaterfall(sID, sDisplayName, sOrigin, CashFlowWaterfall.VERSION);
+    return new AdvWaterfall(sID, sDisplayName, sOrigin, AdvWaterfall.VERSION);
   }
   return { createClientComponent: createClientComponent };
 });
