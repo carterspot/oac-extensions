@@ -1,0 +1,122 @@
+.decomp-root {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  font: 12px sans-serif;
+  color: currentColor;
+}
+
+.decomp-root svg {
+  display: block;
+}
+
+.decomp-empty {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: gray;
+  font-style: italic;
+  text-align: center;
+  padding: 16px;
+}
+
+/* Level header band at top of each column */
+.decomp-header {
+  font-weight: 600;
+  fill: currentColor;
+}
+.decomp-header-sub {
+  font-weight: 400;
+  opacity: 0.7;
+  fill: currentColor;
+}
+.decomp-header-close {
+  cursor: pointer;
+  fill: gray;
+}
+.decomp-header-close:hover {
+  fill: #c0392b;
+}
+.decomp-header-rule {
+  stroke: currentColor;
+  stroke-width: 1;
+  opacity: 0.4;
+}
+
+/* Nodes */
+.decomp-node {
+  cursor: pointer;
+}
+.decomp-node-bar-bg {
+  fill: #e8e8e8;
+}
+.decomp-node-bar {
+  fill: #4a90e2;
+}
+.decomp-node-label,
+.decomp-node-value {
+  fill: currentColor;
+  pointer-events: none;
+}
+.decomp-node.is-selected .decomp-node-label,
+.decomp-node.is-selected .decomp-node-value {
+  font-weight: 700;
+}
+.decomp-node.is-dim {
+  opacity: 0.55;
+}
+
+/* Connectors */
+.decomp-link {
+  fill: none;
+  stroke: #cfd6dd;
+  stroke-width: 1.5;
+}
+.decomp-link.is-selected {
+  stroke: #4a90e2;
+  stroke-width: 2.5;
+}
+
+/* + button at the tip of the selected path */
+.decomp-plus {
+  cursor: pointer;
+}
+.decomp-plus-circle {
+  fill: white;
+  stroke: #4a90e2;
+  stroke-width: 1.5;
+}
+.decomp-plus-glyph {
+  stroke: #4a90e2;
+  stroke-width: 2;
+  fill: none;
+}
+.decomp-plus:hover .decomp-plus-circle {
+  fill: #4a90e2;
+}
+.decomp-plus:hover .decomp-plus-glyph {
+  stroke: white;
+}
+
+/* Dim picker popup */
+.decomp-picker {
+  position: absolute;
+  background: white;
+  border: 1px solid #cfd6dd;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  padding: 4px 0;
+  min-width: 140px;
+  z-index: 1000;
+}
+.decomp-picker-item {
+  padding: 6px 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  color: #222;
+}
+.decomp-picker-item:hover {
+  background: #eef4fb;
+}

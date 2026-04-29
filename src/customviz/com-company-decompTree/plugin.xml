@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<obiplugin xmlns="http://plugin.frameworks.tech.bi.oracle" id="com-company-decompTree" name="com-company-decompTree" version="1.0.0.1714291200000" optimized="false" optimizable="true" category="customviz" categoryVersion="1.0.0.1547829178628">
+    <resources>
+        <resource-folder id="nls" path="nls" optimizable="true">
+            <extensions>
+                <extension name="js" resource-type="script"/>
+            </extensions>
+        </resource-folder>
+        <resource type="script" id="decompTree" path="decompTree.js"/>
+        <resource type="script" id="decompTreedatamodelhandler" path="decompTreedatamodelhandler.js"/>
+        <resource type="binary" id="decompTreeIcon" path="decompTreeIcon.png"/>
+        <resource type="css" id="decompTreestyles" path="decompTreestyles.css"/>
+    </resources>
+    <extensions>
+        <extension id="com.company.decompTree" point-id="oracle.bi.tech.plugin.visualization" version="1.0.0">
+            <configuration>{"host":{"script":{"module":"com-company-decompTree/decompTree","method":"createClientComponent"},"vizSettings":{"_version":"1.0.0","viewConfig":{"viz:chart":{"type":"com.company.decompTree","dataValues":true}}}},"resourceBundle":"com-company-decompTree/nls/messages","properties":{"displayName":{"key":"DECOMPTREE_DISPLAY_NAME","default":"Decomposition Tree"},"shortDisplayName":{"key":"DECOMPTREE_SHORT_DISPLAY_NAME","default":"Decomp Tree"},"category":{"key":"DECOMPTREE_CATEGORY","default":"Decomposition Tree"},"categoryOrder":501,"icon":"decompTreeIcon","dataModelHandler":"com.company.decompTree.visualizationDatamodelHandler","dataModelGovernor":{"dm1":{"rows":50000,"columns":5000}},"isEmbeddable":false,"isMarkingSupported":true}}</configuration>
+        </extension>
+        <extension id="com.company.decompTree.visualizationDatamodelHandler" point-id="oracle.bi.tech.plugin.visualizationDatamodelHandler" version="1.0.0">
+            <configuration>{"module":"com-company-decompTree/decompTreedatamodelhandler","method":"getHandler","config":{"vizPreference":50,"measureLabelConfig":{"supportedEdges":["color","detail","size"],"defaultEdge":"color","visibility":"hidden"},"edgeConfig":{"measures":{"contentType":"measures","global":{"minCount":1,"maxCount":1,"priority":10},"ui":{"customName":{"key":"DECOMPTREE_ANALYZE","default":"Analyze"}}},"row":{"contentType":"categorical","global":{"priority":1,"minCount":1,"maxCount":6},"ui":{"customName":{"key":"DECOMPTREE_EXPLAIN_BY","default":"Explain by"}},"categorical":{"functionalInfo":["inner","row","categoricalType"]}},"color":"none","size":"none","glyph":"none","detail":{"contentType":"measures","ui":{"customName":{"key":"TOOLTIP_DETAIL_LABEL","default":"Tooltip"},"_forceCustomName":true,"customIcon":"dropTarget_tooltipEdgeIcon"}}}}}</configuration>
+        </extension>
+    </extensions>
+</obiplugin>
