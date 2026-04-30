@@ -195,6 +195,20 @@ define([
     return w;
   }
 
+  // Right-truncate text to fit within budget pixels; appends ellipsis when truncated.
+  function truncateText(text, budget, fontFamily, fontSize) {
+    var s = String(text);
+    if (measureTextWidth(s, fontFamily, fontSize) <= budget) return s;
+    var ellipsis = '…';
+    var lo = 0, hi = s.length;
+    while (lo < hi) {
+      var mid = Math.ceil((lo + hi) / 2);
+      if (measureTextWidth(s.slice(0, mid) + ellipsis, fontFamily, fontSize) <= budget) lo = mid;
+      else hi = mid - 1;
+    }
+    return (lo > 0 ? s.slice(0, lo) : '') + ellipsis;
+  }
+
   AdvWaterfall.VERSION = '1.0.0';
 
   function AdvWaterfall(sID, sDisplayName, sOrigin, sVersion) {
@@ -413,7 +427,10 @@ define([
               .attr('pointer-events', 'none');
           }
           var lw = measureTextWidth(labelText, Y_FONT, 11);
-          if (lw + 8 < segW) {
+          // #29: show truncated in-segment label when the full string doesn't fit
+          var inSegLabel = lw + 8 < segW ? labelText
+            : (segW >= 20 ? truncateText(labelText, segW - 8, Y_FONT, 11) : null);
+          if (inSegLabel !== null) {
             rowG.append('text')
               .attr({
                 x: x0 + 6,
@@ -424,7 +441,7 @@ define([
                 'font-size': 11
               })
               .attr('fill', pickContrastFill(fill))
-              .text(labelText)
+              .text(inSegLabel)
               .append('title').text(labelText);
           }
           cursor += direction * segW;
@@ -482,6 +499,10 @@ define([
           });
           var blockW = maxValueW + 8 + maxNameW;
           var blockLeft = direction > 0 ? labelX : labelX - blockW;
+          // #28: keep list from crossing the zero line into the gutter
+          if (direction < 0 && settings.showZeroLine && minVal <= 0 && maxVal >= 0) {
+            blockLeft = Math.max(blockLeft, x(0) + 5);
+          }
           var valueColRight = blockLeft + maxValueW;
           var nameColLeft = blockLeft + maxValueW + 8;
 
@@ -526,6 +547,8 @@ define([
         }
 
         // Left gutter: category name (top) + signed subtotal (bottom)
+        // #29: right-truncate labels that exceed the available gutter width
+        var gutterBudget = margin.left - 14;
         var gutter = svg.append('g').attr('transform',
           'translate(' + margin.left + ',' + (margin.top + ci * bandHeight + bandHeight / 2) + ')');
         gutter.append('text')
@@ -537,7 +560,7 @@ define([
           .attr('font-family', Y_FONT)
           .attr('font-size', Y_FONT_SIZE)
           .attr('fill', 'currentColor')
-          .text(disp(cat.name) || '')
+          .text(truncateText(disp(cat.name) || '', gutterBudget, Y_FONT, Y_FONT_SIZE))
           .append('title').text(fullListText);
         var subtotalText = cat._isClosing
           ? formatNumber(cat.endCum, settings)
@@ -555,7 +578,7 @@ define([
           .attr('font-size', Y_SUB_SIZE)
           .attr('fill', 'currentColor')
           .attr('opacity', cat._isClosing ? 0.85 : 0.7)
-          .text(subtotalText)
+          .text(truncateText(subtotalText, gutterBudget, Y_FONT, Y_SUB_SIZE))
           .append('title').text(subtotalTip);
       });
 
