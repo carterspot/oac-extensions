@@ -1,18 +1,18 @@
 Step,Cumulative Cash,Category
-Cash beginning,3323,Start
-Net income,6263,Operating
-Depreciation,7506,Operating
-Adjustments to net income,9042,Operating
-Changes in liabilities,9729,Operating
-Changes in inventories,9729,Operating
-Changes in receivables,9119,Operating
-Other operating,8780,Operating
-Investments,7537,Investing
-Capital expenditures,5706,Investing
-Other investing,2867,Investing
-Dividends paid,2867,Financing
-Sale purchase of stock,2885,Financing
-Excess tax benefit,4754,Financing
-Net borrowings,4511,Financing
-Other financing,4438,Financing
-Effect of exchange rate,4315,Financing
+01 Cash beginning,3323,1. Start
+02 Net income,6263,2. Operating
+03 Depreciation,7506,2. Operating
+04 Adjustments to net income,9042,2. Operating
+05 Changes in liabilities,9729,2. Operating
+06 Changes in inventories,9729,2. Operating
+07 Changes in receivables,9119,2. Operating
+08 Other operating,8780,2. Operating
+09 Investments,7537,3. Investing
+10 Capital expenditures,5706,3. Investing
+11 Other investing,2867,3. Investing
+12 Dividends paid,2867,4. Financing
+13 Sale purchase of stock,2885,4. Financing
+14 Excess tax benefit,4754,4. Financing
+15 Net borrowings,4511,4. Financing
+16 Other financing,4438,4. Financing
+17 Effect of exchange rate,4315,4. Financing

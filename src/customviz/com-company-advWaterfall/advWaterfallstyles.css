@@ -20,12 +20,17 @@ svg {
 .adv-axis-y text,
 .adv-axis-title,
 .adv-category-label,
+.adv-category-subtotal,
 .adv-subtotal-label {
   fill: currentColor;
 }
 
 .adv-category-label {
   font-weight: 700;
+}
+
+.adv-category-subtotal {
+  font-weight: 400;
 }
 
 .adv-subtotal-label {
