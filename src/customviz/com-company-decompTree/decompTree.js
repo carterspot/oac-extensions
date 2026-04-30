@@ -39,14 +39,16 @@ define([
 
   var decompTree = {};
 
-  function DecompTree() {
-    DecompTree.baseConstructor.apply(this, arguments);
+  DecompTree.VERSION = '1.0.0';
+
+  function DecompTree(sID, sDisplayName, sOrigin, sVersion) {
+    DecompTree.baseConstructor.call(this, sID, sDisplayName, sOrigin, sVersion);
   }
   jsx.extend(DecompTree, dataviz.DataVisualization);
   decompTree.DecompTree = DecompTree;
 
-  decompTree.createClientComponent = function() {
-    return DecompTree;
+  decompTree.createClientComponent = function(sID, sDisplayName, sOrigin) {
+    return new DecompTree(sID, sDisplayName, sOrigin, DecompTree.VERSION);
   };
 
   // ---- Per-viz state -------------------------------------------------------
@@ -77,40 +79,57 @@ define([
   }
 
   // ---- Render --------------------------------------------------------------
-  DecompTree.prototype._render = function() {
-    var viz = this;
-    var rootEl = viz.getRootElement && viz.getRootElement();
-    if (!rootEl) return;
-    var $root = $(rootEl).empty().addClass('decomp-root');
+  DecompTree.prototype._render = function(ctx) {
+    try {
+      var viz = this;
+      var rootEl = (viz.getContainerElem && viz.getContainerElem())
+        || (viz.getRootElement && viz.getRootElement());
+      if (!rootEl) return;
+      var $root = $(rootEl).empty().addClass('decomp-root');
 
-    var info = extractRows(viz);
-    var state = getState(viz);
+      var info = extractRows(viz);
+      var state = getState(viz);
 
-    if (!info.dimNames.length) {
-      $root.append(
-        $('<div class="decomp-empty"></div>').text(messages.DECOMPTREE_NO_DATA)
-      );
-      return;
+      var width  = $root.width()  || 400;
+      var height = $root.height() || 300;
+      var svg = d3.select(rootEl).append('svg')
+        .attr('width', width)
+        .attr('height', height);
+
+      if (!info.dimNames.length) {
+        svg.append('text')
+          .attr('x', 16).attr('y', 24)
+          .attr('fill', 'currentColor')
+          .text((messages && messages.DECOMPTREE_NO_DATA) || 'Drop dimensions and a measure to begin.');
+        return;
+      }
+
+      if (!state.levelDimMap.length) {
+        state.levelDimMap = [0];
+        setState(viz, state);
+      }
+
+      svg.append('text')
+        .attr('class', 'decomp-header')
+        .attr('x', 16).attr('y', 24)
+        .attr('fill', 'currentColor')
+        .text('Decomposition Tree (skeleton) - ' + info.dimNames.length + ' dim(s), measure: ' + info.measureName);
+    } finally {
+      this._setIsRendered(true);
     }
+  };
 
-    // Default level→dim mapping: first unused dim slot, in order.
-    if (!state.levelDimMap.length) {
-      state.levelDimMap = [0];
-      setState(viz, state);
-    }
+  DecompTree.prototype.render = function(ctx) { this._render(ctx); };
 
-    // Columns to render: one per level in the path + one for the active tip column.
-    // For now we just stub a single column so the load path is verified end to end.
-    var width  = $root.width();
-    var height = $root.height();
-    var svg = d3.select(rootEl).append('svg')
-      .attr('width', width)
-      .attr('height', height);
+  DecompTree.prototype._isOnlyPhysicalRowEdge = function() { return false; };
 
-    svg.append('text')
-      .attr('class', 'decomp-header')
-      .attr('x', 16).attr('y', 24)
-      .text('Decomposition Tree (skeleton) — ' + info.dimNames.length + ' dim(s), measure: ' + info.measureName);
+  DecompTree.prototype._onDefaultColorsSettingsChanged = function() {
+    var v = this.assertOrCreateVizContext();
+    this._render(this.createRenderingContext(v));
+  };
+
+  DecompTree.prototype.resizeVisualization = function(dim, v) {
+    this._render(this.createRenderingContext(v));
   };
 
   // ---- Side-panel properties ----------------------------------------------
