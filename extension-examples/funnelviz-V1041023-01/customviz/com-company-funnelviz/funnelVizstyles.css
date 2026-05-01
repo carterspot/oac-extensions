@@ -1,0 +1,24 @@
+.funnelVizRootContainer {
+    display: flex;
+    justify-content: center;
+ }
+  
+ .funnelVizContainer {
+    align-self: center;
+    font-size:14px;
+     
+    -moz-user-select: none;
+    -khtml-user-select: none;
+    -webkit-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+ }
+ 
+ .funnelVizContainer  text{
+    font-size:14px;
+ }
+
+ .funnelmark{
+   stroke: #000000 !important;
+   stroke-width: 2 !important;
+ }

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<obiplugin xmlns="http://plugin.frameworks.tech.bi.oracle" id="com-company-funnelviz" name="com-company-funnelviz" version="1.0.0.1707465356597" optimized="false" optimizable="true" category="customviz" categoryVersion="1.0.0.1707465356597">
+    <resources>
+        <resource type="script" id="funnelViz" path="funnelViz.js"/>
+        <resource type="script" id="funnelVizdatamodelhandler" path="funnelVizdatamodelhandler.js"/>
+        <resource type="binary" id="funnelVizIcon" path="funnelVizIcon.png"/>
+        <resource type="css" id="funnelVizstyles" path="funnelVizstyles.css"/>
+        <resource-folder id="nls" path="nls" optimizable="true">
+            <extensions>
+                <extension name="js" resource-type="script"/>
+            </extensions>
+        </resource-folder>
+    </resources>
+    <extensions>
+        <extension id="com.company.funnelViz" point-id="oracle.bi.tech.plugin.visualization" version="1.0.0">
+            <configuration>{"host":{"script":{"module":"com-company-funnelviz/funnelViz","method":"createClientComponent"},"vizSettings":{"_version":"1.0.0","viewConfig":{"viz:chart":{"type":"com.company.funnelViz","dataValues":true}}}},"resourceBundle":"com-company-funnelviz/nls/messages","properties":{"displayName":{"key":"FUNNELVIZ_DISPLAY_NAME","default":"FunnelViz Plugin"},"shortDisplayName":{"key":"FUNNELVIZ_SHORT_DISPLAY_NAME","default":"FunnelViz Plugin"},"category":{"key":"FUNNELVIZ_CATEGORY","default":"FunnelViz Plugin"},"categoryOrder":500,"icon":"funnelVizIcon","dataModelHandler":"com.company.funnelViz.visualizationDatamodelHandler","dataModelGovernor":{"dm1":{"rows":10000,"columns":5000}},"isEmbeddable":false,"isMarkingSupported":true}}</configuration>
+        </extension>
+        <extension id="com.company.funnelViz.visualizationDatamodelHandler" point-id="oracle.bi.tech.plugin.visualizationDatamodelHandler" version="1.0.0">
+            <configuration>{"module":"com-company-funnelviz/funnelVizdatamodelhandler","method":"getHandler","config":{"vizPreference":50,"measureLabelConfig":{"supportedEdges":["color","detail","size"],"defaultEdge":"color","visibility":"hidden"},"edgeConfig":{"measures":{"contentType":"measures","global":{"minCount":1,"maxCount":1,"priority":10},"ui":{"customName":{"key":"FUNNELVIZ_ITEM_SIZE","default":"Item Size"}}},"row":{"contentType":"categorical","global":{"priority":1,"minCount":1,"maxCount":1},"ui":{"customName":{"key":"FUNNELVIZ_ROW_LABEL","default":"FunnelViz Plugin Row"}},"categorical":{"functionalInfo":["inner","row","categoricalType"]}},"color":"none","size":"none","glyph":"none","detail":"none"}}}</configuration>
+        </extension>
+    </extensions>
+</obiplugin>

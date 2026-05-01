@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<obiplugin xmlns="http://plugin.frameworks.tech.bi.oracle" id="com-company-bulletViz" name="com-company-bulletViz" version="1.0.0.1488174198241" optimized="false" optimizable="true" category="customviz" categoryVersion="1.0.0.1488174198241">
+    <resources>
+        <resource type="script" id="bullet" path="bullet.js"/>
+        <resource type="script" id="bulletViz" path="bulletViz.js"/>
+        <resource type="script" id="bulletVizdatamodelhandler" path="bulletVizdatamodelhandler.js"/>
+        <resource type="binary" id="bulletVizIcon" path="bulletVizIcon.png"/>
+        <resource type="css" id="bulletVizstyles" path="bulletVizstyles.css"/>
+        <resource type="script" id="d3_tip" path="d3_tip.js"/>
+        <resource-folder id="nls" path="nls" optimizable="true">
+            <extensions>
+                <extension name="js" resource-type="script"/>
+            </extensions>
+        </resource-folder>
+    </resources>
+    <extensions>
+        <extension id="com.company.bulletViz" point-id="oracle.bi.tech.plugin.visualization" version="1.0.0">
+            <configuration>{"host":{"script":{"module":"com-company-bulletViz/bulletViz","method":"createClientComponent"},"vizSettings":{"_version":"1.0.0","viewConfig":{"viz:chart":{"type":"com.company.bulletViz","dataValues":true}}}},"resourceBundle":"com-company-bulletViz/nls/messages","properties":{"displayName":{"key":"BULLETVIZ_DISPLAY_NAME","default":"BulletViz Plugin"},"shortDisplayName":{"key":"BULLETVIZ_SHORT_DISPLAY_NAME","default":"BulletViz Plugin"},"category":{"key":"BULLETVIZ_CATEGORY","default":"BulletViz Plugin"},"categoryOrder":500,"icon":"bulletVizIcon","dataModelHandler":"com.company.bulletViz.visualizationDatamodelHandler","dataModelGovernor":{"dm1":{"rows":10000,"columns":5000}},"isEmbeddable":false,"isMarkingSupported":false}}</configuration>
+        </extension>
+        <extension id="com.company.bulletViz.visualizationDatamodelHandler" point-id="oracle.bi.tech.plugin.visualizationDatamodelHandler" version="1.0.0">
+            <configuration>{"module":"com-company-bulletViz/bulletVizdatamodelhandler","method":"getHandler","config":{"vizPreference":50,"measureLabelConfig":{"supportedEdges":[],"visibility":"hidden"},"edgeConfig":{"measures":{"contentType":"measures","global":{"minCount":1,"maxCount":2},"ui":{"customName":{"key":"BULLET_VALUES","default":"Metric(s)"}}},"color":{"contentType":"measures","global":{"minCount":0,"maxCount":1},"ui":{"customName":{"key":"BULLET_MARKER","default":"Marker"},"_forceCustomName":true}},"size":"none","glyph":"none","detail":"none"}}}</configuration>
+        </extension>
+    </extensions>
+</obiplugin>

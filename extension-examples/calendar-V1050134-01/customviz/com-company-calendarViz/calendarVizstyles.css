@@ -1,0 +1,21 @@
+.demo-datavisualizations-blockcalendar-wordspacing {
+    word-spacing: 0.375rem;
+}
+
+.demo-datavisualizations-blockcalendar-style {
+    height: 3.125rem;
+    max-width: 33rem;
+}
+/*.tthead{
+    font-size: 11px;
+    color: grey;
+    text-align: right;
+}
+.ttval{
+    font-size: 11px;
+    color: black;
+}*/
+
+.oj-sm-padding-2x-horizontal .oj-flex-item {
+    margin: 0px 10px;
+}

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<obiplugin xmlns="http://plugin.frameworks.tech.bi.oracle" id="com-company-racingBarsViz" name="com-company-racingBarsViz" version="1.0.0.1741855006821" optimized="false" optimizable="true" category="customviz" categoryVersion="1.0.0.1741855006821">
+    <resources>
+        <resource type="binary" id="busy" path="busy.png"/>
+        <resource-folder id="nls" path="nls" optimizable="true">
+            <extensions>
+                <extension name="js" resource-type="script"/>
+            </extensions>
+        </resource-folder>
+        <resource type="script" id="racingBarsViz" path="racingBarsViz.js"/>
+        <resource type="script" id="racingBarsVizdatamodelhandler" path="racingBarsVizdatamodelhandler.js"/>
+        <resource type="binary" id="racingBarsVizIcon" path="racingBarsVizIcon.png"/>
+        <resource type="css" id="racingBarsVizstyles" path="racingBarsVizstyles.css"/>
+        <resource type="binary" id="refresh-disabled" path="refresh-disabled.png"/>
+        <resource type="binary" id="refresh" path="refresh.png"/>
+    </resources>
+    <extensions>
+        <extension id="com.company.racingBarsViz" point-id="oracle.bi.tech.plugin.visualization" version="1.0.0">
+            <configuration>{"host":{"script":{"module":"com-company-racingBarsViz/racingBarsViz","method":"createClientComponent"},"vizSettings":{"_version":"1.0.0","viewConfig":{"viz:chart":{"type":"com.company.racingBarsViz","dataValues":true}}}},"resourceBundle":"com-company-racingBarsViz/nls/messages","properties":{"displayName":{"key":"RACINGBARSVIZ_DISPLAY_NAME","default":"RacingBarsViz Plugin"},"shortDisplayName":{"key":"RACINGBARSVIZ_SHORT_DISPLAY_NAME","default":"RacingBarsViz Plugin"},"category":{"key":"RACINGBARSVIZ_CATEGORY","default":"RacingBarsViz Plugin"},"categoryOrder":500,"icon":"racingBarsVizIcon","dataModelHandler":"com.company.racingBarsViz.visualizationDatamodelHandler","dataModelGovernor":{"dm1":{"rows":10000,"columns":5000}},"isEmbeddable":false,"isMarkingSupported":true}}</configuration>
+        </extension>
+        <extension id="com.company.racingBarsViz.visualizationDatamodelHandler" point-id="oracle.bi.tech.plugin.visualizationDatamodelHandler" version="1.0.0">
+            <configuration>{"module":"com-company-racingBarsViz/racingBarsVizdatamodelhandler","method":"getHandler","config":{"vizPreference":50,"measureLabelConfig":{"supportedEdges":[],"defaultEdge":"row","visibility":"hidden"},"edgeConfig":{"measures":{"contentType":"measures","global":{"maxCount":1,"minCount":1,"priority":10},"ui":{"customName":{"key":"RACINGBARSVIZ_XAXIS","default":"Values(X-Axis)"},"_forceCustomName":true,"order":1}},"row":{"contentType":"categorical","global":{"minCount":1,"priority":10},"ui":{"customName":{"key":"RACINGBARSVIZ_YAXIS","default":"Category(Y-Axis)"},"_forceCustomName":true,"order":2}},"detail":{"contentType":"categorical","global":{"priority":1,"minCount":1,"maxCount":1},"ui":{"customName":{"key":"RACINGBARSVIZ_ZAXIS","default":"Slider(Z-Axis)"},"_forceCustomName":true,"order":3},"categorical":{"functionalInfo":["inner","row","categoricalType"]}},"color":{"contentType":"categorical","global":{"minCount":0,"maxCount":1,"preferredMin":1,"preferredMax":1,"priority":7},"measures":{"minCount":0,"maxCount":1},"ui":{"order":4},"categorical":{"functionalInfo":["inner","col","categoricalType"]}},"glyph":"none"}}}</configuration>
+        </extension>
+    </extensions>
+</obiplugin>

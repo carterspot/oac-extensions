@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<obiplugin xmlns="http://plugin.frameworks.tech.bi.oracle" id="com-company-calendarViz" name="com-company-calendarViz" version="1.0.0.1749638158286" optimized="false" optimizable="true" category="customviz" categoryVersion="1.0.0.1749638158286">
+    <resources>
+        <resource type="script" id="calendarViz" path="calendarViz.js"/>
+        <resource type="script" id="calendarVizdatamodelhandler" path="calendarVizdatamodelhandler.js"/>
+        <resource type="binary" id="calendarVizIcon" path="calendarVizIcon.png"/>
+        <resource type="css" id="calendarVizstyles" path="calendarVizstyles.css"/>
+        <resource-folder id="nls" path="nls" optimizable="true">
+            <extensions>
+                <extension name="js" resource-type="script"/>
+            </extensions>
+        </resource-folder>
+    </resources>
+    <extensions>
+        <extension id="com.company.calendarViz" point-id="oracle.bi.tech.plugin.visualization" version="1.0.0">
+            <configuration>{"host":{"script":{"module":"com-company-calendarViz/calendarViz","method":"createClientComponent"},"vizSettings":{"_version":"1.0.0","viewConfig":{"viz:chart":{"type":"com.company.calendarViz","dataValues":true}}}},"resourceBundle":"com-company-calendarViz/nls/messages","properties":{"displayName":{"key":"CALENDARVIZ_DISPLAY_NAME","default":"Calendar Heatmap"},"shortDisplayName":{"key":"CALENDARVIZ_SHORT_DISPLAY_NAME","default":"Calendar Heatmap"},"category":{"key":"CALENDARVIZ_CATEGORY","default":"CalendarViz Plugin"},"categoryOrder":500,"icon":"calendarVizIcon","dataModelHandler":"com.company.calendarViz.visualizationDatamodelHandler","dataModelGovernor":{"dm1":{"rows":10000,"columns":5000}},"isEmbeddable":false,"isMarkingSupported":false}}</configuration>
+        </extension>
+        <extension id="com.company.calendarViz.visualizationDatamodelHandler" point-id="oracle.bi.tech.plugin.visualizationDatamodelHandler" version="1.0.0">
+            <configuration>{"module":"com-company-calendarViz/calendarVizdatamodelhandler","method":"getHandler","config":{"vizPreference":50,"measureLabelConfig":{"supportedEdges":["color","detail","size"],"defaultEdge":"row","visibility":"hidden"},"edgeConfig":{"measures":{"contentType":"measures","global":{"minCount":1,"maxCount":1,"priority":10},"ui":{"customName":{"key":"CALENDARVIZ_ITEM_SIZE","default":"Item Color"}}},"row":{"contentType":"datetime","global":{"priority":1,"minCount":1,"maxCount":1},"ui":{"customName":{"key":"CALENDARVIZ_ROW_LABEL","default":"Date"}},"categorical":{"functionalInfo":["outer","row","dateTimeType"]}},"color":"none","size":"none","glyph":"none","detail":"none"}}}</configuration>
+        </extension>
+    </extensions>
+</obiplugin>

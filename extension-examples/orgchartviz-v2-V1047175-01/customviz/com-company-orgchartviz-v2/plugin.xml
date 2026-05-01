@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<obiplugin xmlns="http://plugin.frameworks.tech.bi.oracle" id="com-company-orgchartviz-v2" name="com-company-orgchartviz-v2" version="1.0.0.1734629881736" optimized="false" optimizable="true" category="customviz" categoryVersion="1.0.0.1734629881736">
+    <resources>
+        <resource-folder id="nls" path="nls" optimizable="true">
+            <extensions>
+                <extension name="js" resource-type="script"/>
+            </extensions>
+        </resource-folder>
+        <resource type="script" id="orgChartViz" path="orgChartViz.js"/>
+        <resource type="script" id="orgChartVizDatamodelHandler" path="orgChartVizDatamodelHandler.js"/>
+        <resource type="binary" id="orgChartVizIcon" path="orgChartVizIcon.png"/>
+        <resource type="css" id="orgChartVizstyles" path="orgChartVizstyles.css"/>
+    </resources>
+    <extensions>
+        <extension id="orgChartViz" point-id="oracle.bi.tech.plugin.visualization" version="1.0.0">
+            <configuration>{"host":{"script":{"module":"com-company-orgchartviz-v2/orgChartViz","method":"createClientComponent"},"vizSettings":{"_version":"1.0.0","viewConfig":{"viz:chart":{"type":"orgChartViz","dataValues":true}}}},"resourceBundle":"com-company-orgchartviz-v2/nls/messages","properties":{"displayName":{"key":"ORGCHARTVIZ_DISPLAY_NAME","default":"orgChartViz"},"shortDisplayName":{"key":"ORGCHARTVIZ_SHORT_DISPLAY_NAME","default":"orgChartViz"},"category":{"key":"ORGCHARTVIZ_CATEGORY","default":"orgChartViz"},"categoryOrder":500,"icon":"orgChartVizIcon","dataModelHandler":"orgChartViz.visualizationDatamodelHandler","dataModelGovernor":{"dm1":{"rows":25000,"columns":5000}},"isEmbeddable":false,"isMarkingSupported":false}}</configuration>
+        </extension>
+        <extension id="orgChartViz.visualizationDatamodelHandler" point-id="oracle.bi.tech.plugin.visualizationDatamodelHandler" version="1.0.0">
+            <configuration>{"module":"com-company-orgchartviz-v2/orgChartVizDatamodelHandler","method":"getHandler","config":{"vizPreference":50,"measureLabelConfig":{"supportedEdges":["color","detail","size"],"defaultEdge":"color","visibility":"hidden"},"edgeConfig":{"measures":"none","row":{"contentType":"mixed","global":{"minCount":0,"maxCount":2,"priority":1,"preferredMax":2},"ui":{"customName":{"key":"ORGCHARTVIZ_ROW_LABEL","default":"orgChartViz Row"}},"categorical":{"functionalInfo":["inner","row","categoricalType"]}},"color":{"contentType":"both","global":{"preferredMin":1,"preferredMax":1},"measures":{"maxCount":1},"categorical":{"functionalInfo":["inner","col","categoricalType"]}},"size":"none","glyph":"none","detail":{"contentType":"mixed","global":{"minCount":0,"maxCount":20},"ui":{"customName":{"key":"ORGCHARTVIZ_ATTRIBUTE","default":"Details","customIcon":"dropTarget_categoryEdgeIcon"}},"measures":{"minCount":0,"maxCount":20},"categorical":{"functionalInfo":["inner","row","categoricalType"]}}}}}</configuration>
+        </extension>
+    </extensions>
+</obiplugin>

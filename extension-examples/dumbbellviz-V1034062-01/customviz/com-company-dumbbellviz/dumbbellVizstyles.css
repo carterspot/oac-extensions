@@ -1,0 +1,79 @@
+/**************************** Dumbbell plugin CSS properties ********************/
+
+.dumbbellmain{  
+  position: relative;
+  }
+  
+  .dot.a .dumbbell{
+      stroke: rgb(134, 23, 3);
+      fill: rgb(134, 23, 3);
+  }
+  .dot.b .dumbbell{
+      stroke: rgb(138, 198, 228);
+      fill: rgb(138, 198, 228);
+  }
+  
+  .connect-line{
+      stroke: #ccc;
+      stroke-width: 1px;
+  }
+
+    div.tooltip {
+      position: absolute;
+      text-align: center;
+      width: auto;
+      height: auto;
+      padding: 8px;
+      font: 14px sans-serif;
+      background: whitesmoke;
+      border: 0px;
+      border-radius: 6px;
+      border-color: gray;
+      pointer-events: none;
+      z-index: 1000;
+    }
+  
+    .tthead{
+      font-size: 11px;
+      color: grey;
+      text-align: right;
+
+    }
+    .ttval{
+      font-size: 11px;
+      color: black;
+      text-align: left;
+    }  
+  
+    .dumbbelllegend {
+      overflow-x: hidden;
+      overflow-y: auto !important;
+      --height: auto !important;
+      width: 100px;
+      position: absolute !important;
+      right: 0;
+      bottom: 0;
+      margin-right: 0px;
+      margin-top: 20px;
+      display: inline-block;
+    }
+     .dumbbelllegendtitle {
+      overflow: hidden;
+      width: 70px;
+      position: absolute !important;
+      right: 10px;
+      top: 70px;
+      margin-right: 20px;
+      margin-top: 0px;
+      font-size: 10px;
+      text-align: center;
+      color: grey;
+      padding-top: 0;
+      display: inline-block;
+    } 
+  
+    .dumbmark{
+      stroke: #000000 !important;
+      stroke-width: 2 !important;
+    }
+  

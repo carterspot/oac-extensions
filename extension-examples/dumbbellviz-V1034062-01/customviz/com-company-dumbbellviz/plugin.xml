@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<obiplugin xmlns="http://plugin.frameworks.tech.bi.oracle" id="com-company-dumbbellviz" name="com-company-dumbbellviz" version="1.0.0.1675664988483" optimized="false" optimizable="true" category="customviz" categoryVersion="1.0.0.1675664988483">
+    <resources>
+        <resource type="script" id="dumbbellViz" path="dumbbellViz.js"/>
+        <resource type="script" id="dumbbellVizdatamodelhandler" path="dumbbellVizdatamodelhandler.js"/>
+        <resource type="binary" id="dumbbellVizIcon" path="dumbbellVizIcon.png"/>
+        <resource type="css" id="dumbbellVizstyles" path="dumbbellVizstyles.css"/>
+        <resource-folder id="nls" path="nls" optimizable="true">
+            <extensions>
+                <extension name="js" resource-type="script"/>
+            </extensions>
+        </resource-folder>
+    </resources>
+    <extensions>
+        <extension id="com.company.dumbbellViz" point-id="oracle.bi.tech.plugin.visualization" version="1.0.0">
+            <configuration>{"host":{"script":{"module":"com-company-dumbbellviz/dumbbellViz","method":"createClientComponent"},"vizSettings":{"_version":"1.0.0","viewConfig":{"viz:chart":{"type":"com.company.dumbbellViz","dataValues":true}}}},"resourceBundle":"com-company-dumbbellviz/nls/messages","properties":{"displayName":{"key":"DUMBBELLVIZ_DISPLAY_NAME","default":"DumbbellViz Plugin"},"shortDisplayName":{"key":"DUMBBELLVIZ_SHORT_DISPLAY_NAME","default":"DumbbellViz Plugin"},"category":{"key":"DUMBBELLVIZ_CATEGORY","default":"DumbbellViz Plugin"},"categoryOrder":500,"icon":"dumbbellVizIcon","dataModelHandler":"com.company.dumbbellViz.visualizationDatamodelHandler","dataModelGovernor":{"dm1":{"rows":10000,"columns":5000}},"isEmbeddable":false,"isMarkingSupported":true}}</configuration>
+        </extension>
+        <extension id="com.company.dumbbellViz.visualizationDatamodelHandler" point-id="oracle.bi.tech.plugin.visualizationDatamodelHandler" version="1.0.0">
+            <configuration>{"module":"com-company-dumbbellviz/dumbbellVizdatamodelhandler","method":"getHandler","config":{"vizPreference":50,"measureLabelConfig":{"supportedEdges":[],"defaultEdge":"row","visibility":"hidden"},"edgeConfig":{"measures":{"contentType":"measures","global":{"minCount":1,"maxCount":1,"priority":10},"ui":{"customName":{"key":"DUMBBELLVIZ_YAXIS","default":"Y axis"},"_forceCustomName":true,"order":2}},"row":{"contentType":"categorical","global":{"minCount":1,"maxCount":1,"priority":1,"preferredMax":1},"ui":{"customName":{"key":"DUMBBELLVIZ_XAXIS","default":"X axis"},"_forceCustomName":true,"order":1},"categorical":{"functionalInfo":["inner","row","categoricalType"]}},"detail":{"contentType":"categorical","global":{"priority":1,"minCount":1,"maxCount":1},"ui":{"customName":{"key":"DUMBBELLVIZ_CATEGORY","default":"Category (2 points)"},"_forceCustomName":true,"order":3},"categorical":{"functionalInfo":["inner","row","categoricalType"]}},"color":"none","size":"none","glyph":"none"}}}</configuration>
+        </extension>
+    </extensions>
+</obiplugin>
