@@ -43,7 +43,9 @@ define([
     stepShadingRange: 0.6,
     markNegativeSegments: true,
     categoryDetailMode: 'cumulative',
-    listSort: 'magnitude'
+    listSort: 'magnitude',
+    showInSegmentLabels: true,
+    gutterMaxPct: 30
   };
 
   function getSettings(viz) {
@@ -67,7 +69,9 @@ define([
       stepShadingRange: typeof w.stepShadingRange === 'number' ? w.stepShadingRange : DEFAULTS.stepShadingRange,
       markNegativeSegments: typeof w.markNegativeSegments === 'boolean' ? w.markNegativeSegments : DEFAULTS.markNegativeSegments,
       categoryDetailMode: (w.categoryDetailMode === 'list' || w.categoryDetailMode === 'both' || w.categoryDetailMode === 'cumulative') ? w.categoryDetailMode : DEFAULTS.categoryDetailMode,
-      listSort: (w.listSort === 'source' || w.listSort === 'magnitude') ? w.listSort : DEFAULTS.listSort
+      listSort: (w.listSort === 'source' || w.listSort === 'magnitude') ? w.listSort : DEFAULTS.listSort,
+      showInSegmentLabels: typeof w.showInSegmentLabels === 'boolean' ? w.showInSegmentLabels : DEFAULTS.showInSegmentLabels,
+      gutterMaxPct: typeof w.gutterMaxPct === 'number' ? w.gutterMaxPct : DEFAULTS.gutterMaxPct
     };
   }
 
@@ -209,6 +213,32 @@ define([
     return (lo > 0 ? s.slice(0, lo) : '') + ellipsis;
   }
 
+  // Word-wrap text into up to maxLines lines fitting budget pixels.
+  // Last line right-truncates with ellipsis if remaining words don't fit.
+  function wrapTextLines(text, budget, fontFamily, fontSize, maxLines) {
+    var words = String(text).split(/\s+/).filter(Boolean);
+    if (!words.length) return [''];
+    if (maxLines <= 1) return [truncateText(text, budget, fontFamily, fontSize)];
+    var lines = [];
+    var cur = '';
+    for (var i = 0; i < words.length; i++) {
+      var trial = cur ? cur + ' ' + words[i] : words[i];
+      if (measureTextWidth(trial, fontFamily, fontSize) <= budget) {
+        cur = trial;
+      } else {
+        if (cur) lines.push(cur);
+        cur = words[i];
+        if (lines.length === maxLines - 1) {
+          var rest = words.slice(i).join(' ');
+          lines.push(truncateText(rest, budget, fontFamily, fontSize));
+          return lines;
+        }
+      }
+    }
+    if (cur) lines.push(cur);
+    return lines;
+  }
+
   AdvWaterfall.VERSION = '1.0.0';
 
   function AdvWaterfall(sID, sDisplayName, sOrigin, sVersion) {
@@ -348,14 +378,16 @@ define([
         }
       });
 
+      var width = $(elContainer).width() - 20;
+      var height = $(elContainer).height() - 10;
+      // #33: cap left gutter to gutterMaxPct of width so chart stays the star
+      var gutterCap = Math.floor(width * (settings.gutterMaxPct / 100));
       var margin = {
         top: 24,
         right: Math.max(40, Math.ceil(widestRight) + 16),
         bottom: 40,
-        left: Math.ceil(widestLeft) + 20
+        left: Math.min(Math.ceil(widestLeft) + 20, gutterCap)
       };
-      var width = $(elContainer).width() - 20;
-      var height = $(elContainer).height() - 10;
 
       var svg = d3.select(elContainer).append('svg').attr({ width: width, height: height });
       svg.style('color', detectThemeTextColor(elContainer));
@@ -430,6 +462,10 @@ define([
           // #29: show truncated in-segment label when the full string doesn't fit
           var inSegLabel = lw + 8 < segW ? labelText
             : (segW >= 20 ? truncateText(labelText, segW - 8, Y_FONT, 11) : null);
+          // #34: suppress in-segment when user toggled off, or when list mode renders the same text
+          var listActive = !cat._isClosing && (settings.categoryDetailMode === 'list' || settings.categoryDetailMode === 'both');
+          // #32: closing row's in-bar text duplicates the gutter — suppress it
+          if (!settings.showInSegmentLabels || listActive || cat._isClosing) inSegLabel = null;
           if (inSegLabel !== null) {
             rowG.append('text')
               .attr({
@@ -498,9 +534,11 @@ define([
             if (nw > maxNameW) maxNameW = nw;
           });
           var blockW = maxValueW + 8 + maxNameW;
-          var blockLeft = direction > 0 ? labelX : labelX - blockW;
-          // #28: keep list from crossing the zero line into the gutter
-          if (direction < 0 && settings.showZeroLine && minVal <= 0 && maxVal >= 0) {
+          // #31: always render list to the right of the bar's right edge,
+          // regardless of bar direction. Never on top of the bar.
+          var blockLeft = barRight + 6;
+          // #28: also keep clear of the zero line if it's drawn
+          if (settings.showZeroLine && minVal <= 0 && maxVal >= 0) {
             blockLeft = Math.max(blockLeft, x(0) + 5);
           }
           var valueColRight = blockLeft + maxValueW;
@@ -546,22 +584,33 @@ define([
           });
         }
 
-        // Left gutter: category name (top) + signed subtotal (bottom)
-        // #29: right-truncate labels that exceed the available gutter width
+        // Left gutter: category name (wrapped or right-truncated) + signed subtotal
+        // #33: word-wrap when band has vertical room, right-truncate otherwise
         var gutterBudget = margin.left - 14;
+        var lineH = Y_FONT_SIZE + 2;
+        var subH = Y_SUB_SIZE + 2;
+        var availForName = bandHeight / 2 - 2;
+        var maxNameLines = Math.max(1, Math.floor(availForName / lineH));
+        var nameLines = wrapTextLines(disp(cat.name) || '', gutterBudget, Y_FONT, Y_FONT_SIZE, maxNameLines);
         var gutter = svg.append('g').attr('transform',
           'translate(' + margin.left + ',' + (margin.top + ci * bandHeight + bandHeight / 2) + ')');
-        gutter.append('text')
+        var nameText = gutter.append('text')
           .attr('class', 'adv-category-label')
           .attr('text-anchor', 'end')
           .attr('dominant-baseline', 'auto')
           .attr('x', -10)
-          .attr('y', -3)
+          .attr('y', -3 - (nameLines.length - 1) * lineH)
           .attr('font-family', Y_FONT)
           .attr('font-size', Y_FONT_SIZE)
-          .attr('fill', 'currentColor')
-          .text(truncateText(disp(cat.name) || '', gutterBudget, Y_FONT, Y_FONT_SIZE))
-          .append('title').text(fullListText);
+          .attr('fill', 'currentColor');
+        nameLines.forEach(function(ln, li) {
+          nameText.append('tspan')
+            .attr('x', -10)
+            .attr('dy', li === 0 ? 0 : lineH)
+            .text(ln);
+        });
+        nameText.append('title').text(disp(cat.name) || '');
+        // #32: closing row dedups — gutter shows just the value (already labeled by End row position)
         var subtotalText = cat._isClosing
           ? formatNumber(cat.endCum, settings)
           : formatSigned(cat.netDelta, settings);
