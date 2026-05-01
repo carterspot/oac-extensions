@@ -1,16 +1,49 @@
 define([
   'obitech-framework/jsx',
   'obitech-reportservices/datamodelshapes',
-  'obitech-reportservices/datavisualizationhandlerutils'
-], function(jsx, datamodelshapes, dvHandlerUtils) {
+  'obitech-viz/genericDataModelHandler',
+  'obitech-report/vizdatamodelsmanager'
+], function(jsx, datamodelshapes, genericDataModelHandler, vdm) {
   'use strict';
+  var targetBarDataModelHandler = {};
 
-  var handler = {};
+  function TargetBarDataModelHandler(oConfig, sId, sDisplayName, sOrigin, sVersion) {
+    TargetBarDataModelHandler.baseConstructor.call(
+      this, oConfig, sId, sDisplayName, sOrigin, sVersion
+    );
+  }
+  jsx.extend(TargetBarDataModelHandler, genericDataModelHandler.GenericDataModelHandler);
+  targetBarDataModelHandler.TargetBarDataModelHandler = TargetBarDataModelHandler;
 
-  handler.getHandler = function(config) {
-    var base = dvHandlerUtils.createDefaultDataVisualizationHandler(config);
-    return base;
+  TargetBarDataModelHandler.prototype.getLogicalMapper = function() {
+    var oData = new datamodelshapes.PhysicalPlacement(datamodelshapes.Physical.DATA);
+    var oRow  = new datamodelshapes.PhysicalPlacement(datamodelshapes.Physical.ROW);
+
+    var oMapper = new vdm.Mapper();
+
+    oMapper.addCategoricalMapping(datamodelshapes.Logical.SIZE, null);
+    oMapper.addCategoricalMapping(datamodelshapes.Logical.COLOR, oRow);
+    oMapper.addCategoricalMapping(datamodelshapes.Logical.ROW, oRow);
+    oMapper.addCategoricalMapping(datamodelshapes.Logical.CATEGORY, oRow);
+
+    oMapper.addMeasureMapping(datamodelshapes.Logical.SIZE, null);
+    oMapper.addMeasureMapping(datamodelshapes.Logical.COLOR, oRow);
+    oMapper.addMeasureMapping(datamodelshapes.Logical.MEASURES, oData);
+    oMapper.addMeasureMapping(datamodelshapes.Logical.CATEGORY, oRow);
+
+    oMapper.addAdvancedAnalyticsMapping(datamodelshapes.Logical.COLOR, null, null);
+
+    oMapper.setDefaultPhysicalMeasureLabel(
+      datamodelshapes.Physical.COLUMN,
+      this.getMeasureLabelConfig().visibility
+    );
+
+    return oMapper;
   };
 
-  return handler;
+  targetBarDataModelHandler.getHandler = function(extensionPointName, config) {
+    return new TargetBarDataModelHandler(config, extensionPointName);
+  };
+
+  return targetBarDataModelHandler;
 });
