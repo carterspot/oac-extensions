@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<obiplugin xmlns="http://plugin.frameworks.tech.bi.oracle" id="com-company-targetBar" name="com-company-targetBar" version="1.0.0.1777700000000" optimized="false" optimizable="true" category="customviz" categoryVersion="1.0.0.1547829178628">
+    <resources>
+        <resource-folder id="nls" path="nls" optimizable="true">
+            <extensions>
+                <extension name="js" resource-type="script"/>
+            </extensions>
+        </resource-folder>
+        <resource type="script" id="targetBar" path="targetBar.js"/>
+        <resource type="script" id="targetBardatamodelhandler" path="targetBardatamodelhandler.js"/>
+        <resource type="binary" id="targetBarIcon" path="targetBarIcon.png"/>
+        <resource type="css" id="targetBarstyles" path="targetBarstyles.css"/>
+    </resources>
+    <extensions>
+        <extension id="com.company.targetBar" point-id="oracle.bi.tech.plugin.visualization" version="1.0.0">
+            <configuration>{"host":{"script":{"module":"com-company-targetBar/targetBar","method":"createClientComponent"},"vizSettings":{"_version":"1.0.0","viewConfig":{"viz:chart":{"type":"com.company.targetBar","dataValues":true}}}},"resourceBundle":"com-company-targetBar/nls/messages","properties":{"displayName":{"key":"TARGETBAR_DISPLAY_NAME","default":"Target Bar"},"shortDisplayName":{"key":"TARGETBAR_SHORT_DISPLAY_NAME","default":"Target Bar"},"category":{"key":"TARGETBAR_CATEGORY","default":"Target Bar"},"categoryOrder":503,"icon":"targetBarIcon","dataModelHandler":"com.company.targetBar.visualizationDatamodelHandler","dataModelGovernor":{"dm1":{"rows":10000,"columns":5000}},"isEmbeddable":false,"isMarkingSupported":false}}</configuration>
+        </extension>
+        <extension id="com.company.targetBar.visualizationDatamodelHandler" point-id="oracle.bi.tech.plugin.visualizationDatamodelHandler" version="1.0.0">
+            <configuration>{"module":"com-company-targetBar/targetBardatamodelhandler","method":"getHandler","config":{"vizPreference":50,"measureLabelConfig":{"supportedEdges":["color","detail","size"],"defaultEdge":"color","visibility":"hidden"},"edgeConfig":{"measures":{"contentType":"measures","global":{"minCount":1,"maxCount":2,"priority":10},"ui":{"customName":{"key":"TARGETBAR_VALUES","default":"Actual / Target"}}},"row":{"contentType":"categorical","global":{"priority":1,"minCount":1,"maxCount":1},"ui":{"customName":{"key":"TARGETBAR_CATEGORY_EDGE","default":"Category"}},"categorical":{"functionalInfo":["inner","row","categoricalType"]}},"color":{"contentType":"categorical","global":{"minCount":0,"maxCount":1,"priority":7},"ui":{"customName":{"key":"TARGETBAR_COLOR_EDGE","default":"Color"}}},"size":"none","glyph":"none","detail":{"contentType":"measures","ui":{"customName":{"key":"TOOLTIP_DETAIL_LABEL","default":"Tooltip"},"_forceCustomName":true,"customIcon":"dropTarget_tooltipEdgeIcon"}}}}}</configuration>
+        </extension>
+    </extensions>
+</obiplugin>

@@ -1,0 +1,23 @@
+.target-bar-root {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.target-bar-root svg {
+  display: block;
+}
+
+.target-bar-bar {
+  shape-rendering: crispEdges;
+}
+
+.target-bar-target {
+  stroke-width: 2;
+  shape-rendering: crispEdges;
+}
+
+.target-bar-below-glyph {
+  font-weight: 600;
+}
