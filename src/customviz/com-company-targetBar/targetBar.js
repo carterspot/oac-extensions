@@ -71,7 +71,8 @@ define([
       currencySymbol:      typeof t.currencySymbol === 'string' ? t.currencySymbol : DEFAULTS.currencySymbol,
       showAxisValues:     b('showAxisValues'),
       showAxisLabel:      b('showAxisLabel'),
-      axisLabel:           typeof t.axisLabel === 'string' ? t.axisLabel : DEFAULTS.axisLabel
+      axisLabel:           typeof t.axisLabel === 'string' ? t.axisLabel : DEFAULTS.axisLabel,
+      axisFontSize:        typeof t.axisFontSize === 'number' ? t.axisFontSize : DEFAULTS.axisFontSize
     };
   }
 
