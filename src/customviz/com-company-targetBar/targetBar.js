@@ -55,16 +55,14 @@ define([
   TargetBar.prototype.myGenerateData = function(oDataLayout, ctx) {
     if (!oDataLayout) return null;
     var nRows = oDataLayout.getEdgeExtent(datamodelshapes.Physical.ROW);
-    var nMeasures = 0;
-    try { nMeasures = oDataLayout.getEdgeExtent(datamodelshapes.Physical.COLUMN); } catch (e) {}
-    if (!nMeasures) {
-      // probe column 0 — getValue throws if unbound
-      try { oDataLayout.getValue(datamodelshapes.Physical.DATA, 0, 0); nMeasures = 1; } catch (e) {}
-      try { oDataLayout.getValue(datamodelshapes.Physical.DATA, 0, 1); nMeasures = 2; } catch (e) {}
-    }
-    var oHelper = ctx.get(dataviz.DataContextProperty.DATA_LAYOUT_HELPER);
-    var oColorCtx = this.getColorContext(ctx);
-    var oColorInterp = this.getCachedColorInterpolator(ctx, datamodelshapes.Logical.COLOR);
+    var oDataModel = oDataLayout.getDataModel ? oDataLayout.getDataModel() : null;
+    var nMeasures = 1;
+    try {
+      if (oDataModel && oDataModel.getColumnIDsIn) {
+        var aCols = oDataModel.getColumnIDsIn(datamodelshapes.Physical.DATA);
+        if (aCols && aCols.length) nMeasures = aCols.length;
+      }
+    } catch (e) {}
 
     var aOut = [];
     for (var i = 0; i < nRows; i++) {
@@ -74,14 +72,10 @@ define([
       if (nMeasures > 1) {
         try { target = oDataLayout.getValue(datamodelshapes.Physical.DATA, i, 1); } catch (e) {}
       }
-      // Ignore OAC's auto color-scale on the color edge — the color edge here
-      // carries the Target *value*, not categorical hue. Bar color is decided
-      // in render based on actual-vs-target comparison.
       aOut.push({
         category: category,
         actual: Number(actual),
-        target: target == null ? null : Number(target),
-        color: null
+        target: (target == null || target === '') ? null : Number(target)
       });
     }
     return aOut.length ? aOut : null;
@@ -162,7 +156,7 @@ define([
         var y = i * bandHeight + rectYOffset;
         var hasTarget = d.target != null && !isNaN(d.target);
         var below = hasTarget && d.actual < d.target;
-        var fill = below ? DEFAULTS.belowColor : (d.color || DEFAULTS.barColor);
+        var fill = below ? DEFAULTS.belowColor : DEFAULTS.barColor;
 
         // Bar
         plot.append('rect')
