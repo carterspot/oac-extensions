@@ -31,8 +31,21 @@ define([
     targetColor: '#3A3A3A',
     barGapPct: 35,
     showGlyph: true,
-    glyphRadius: 4
+    glyphRadius: 4,
+    showShortfall: true
   };
+
+  function getSettings(self) {
+    var cfg = (self.getViewConfig && self.getViewConfig()) || {};
+    var t = cfg.targetBar || {};
+    return {
+      barColor:      t.barColor      || DEFAULTS.barColor,
+      belowColor:    t.belowColor    || DEFAULTS.belowColor,
+      targetColor:   t.targetColor   || DEFAULTS.targetColor,
+      showGlyph:     typeof t.showGlyph     === 'boolean' ? t.showGlyph     : DEFAULTS.showGlyph,
+      showShortfall: typeof t.showShortfall === 'boolean' ? t.showShortfall : DEFAULTS.showShortfall
+    };
+  }
 
   var targetBar = {};
 
@@ -101,6 +114,7 @@ define([
       var $root = $(elContainer).empty().addClass('target-bar-root');
       var oDataLayout = ctx.get(dataviz.DataContextProperty.DATA_LAYOUT);
       var dataset = this.myGenerateData(oDataLayout, ctx);
+      var s = getSettings(this);
 
       var width  = $root.width()  || 400;
       var height = $root.height() || 300;
@@ -156,7 +170,7 @@ define([
         var y = i * bandHeight + rectYOffset;
         var hasTarget = d.target != null && !isNaN(d.target);
         var below = hasTarget && d.actual < d.target;
-        var fill = below ? DEFAULTS.belowColor : DEFAULTS.barColor;
+        var fill = below ? s.belowColor : s.barColor;
 
         // Bar
         plot.append('rect')
@@ -168,6 +182,18 @@ define([
           .append('title').text(String(d.category) + ': ' + fmt(d.actual) +
             (hasTarget ? '  (target ' + fmt(d.target) + ')' : ''));
 
+        // Shortfall connector: faint dashed line from bar-end to target tick when below
+        if (below && s.showShortfall) {
+          plot.append('line')
+            .attr('class', 'target-bar-shortfall')
+            .attr('x1', x(d.actual)).attr('x2', x(d.target))
+            .attr('y1', y + rectHeight / 2).attr('y2', y + rectHeight / 2)
+            .attr('stroke', s.belowColor)
+            .attr('stroke-width', 1)
+            .attr('stroke-dasharray', '3,3')
+            .attr('opacity', 0.6);
+        }
+
         // Target hash
         if (hasTarget) {
           var tx = x(d.target);
@@ -175,7 +201,7 @@ define([
             .attr('class', 'target-bar-target')
             .attr('x1', tx).attr('x2', tx)
             .attr('y1', y - 3).attr('y2', y + rectHeight + 3)
-            .attr('stroke', DEFAULTS.targetColor)
+            .attr('stroke', s.targetColor)
             .attr('stroke-width', 2);
         }
 
@@ -189,7 +215,7 @@ define([
           .text(fmt(d.actual));
 
         // Status dot (left gutter) — colored to match the bar
-        if (DEFAULTS.showGlyph) {
+        if (s.showGlyph) {
           svg.append('circle')
             .attr('class', 'target-bar-glyph')
             .attr('cx', margin.left - 8)
@@ -199,7 +225,7 @@ define([
         }
 
         // Category label (left gutter, with offset for dot if present)
-        var labelX = DEFAULTS.showGlyph ? margin.left - 18 : margin.left - 6;
+        var labelX = s.showGlyph ? margin.left - 18 : margin.left - 6;
         svg.append('text')
           .attr('x', labelX)
           .attr('y', margin.top + y + rectHeight / 2)
@@ -238,16 +264,88 @@ define([
     this._render(this.createRenderingContext(v));
   };
 
-  // ---- Properties panel (stub) --------------------------------------------
+  // ---- Properties panel ---------------------------------------------------
   TargetBar.prototype._addVizSpecificPropsDialog = function(oTabbedPanelsGadgetInfo) {
+    var cfg = this.getViewConfig() || {};
+    var t = cfg.targetBar || {};
+    var panel = gadgetdialog.forcePanelByID(oTabbedPanelsGadgetInfo, euidef.GD_PANEL_ID_STYLE);
+
+    var lblShowGlyph = 'Show status dot';
+    var ckGlyph = typeof t.showGlyph === 'boolean' ? t.showGlyph : DEFAULTS.showGlyph;
+    panel.addChild(new gadgets.CheckboxGadgetInfo(
+      'tbShowGlyph', lblShowGlyph, 'Colored dot in the left gutter, one per row',
+      new gadgets.CheckboxGadgetValueProperties(euidef.GadgetTypeIDs.CHECKBOX, ckGlyph, ckGlyph),
+      0, false
+    ));
+
+    var lblShortfall = 'Show shortfall connector';
+    var ckShort = typeof t.showShortfall === 'boolean' ? t.showShortfall : DEFAULTS.showShortfall;
+    panel.addChild(new gadgets.CheckboxGadgetInfo(
+      'tbShowShortfall', lblShortfall, 'Dashed line from bar-end to target tick when below target',
+      new gadgets.CheckboxGadgetValueProperties(euidef.GadgetTypeIDs.CHECKBOX, ckShort, ckShort),
+      0, false
+    ));
+
+    var lblBarColor = 'Above-target bar color';
+    panel.addChild(new gadgets.ColorPickerGadgetInfo(
+      'tbBarColor', lblBarColor, lblBarColor,
+      new gadgets.GadgetValueProperties(euidef.GadgetTypeIDs.COLOR_PICKER, t.barColor || DEFAULTS.barColor, { ariaLabel: lblBarColor }),
+      0, false, null,
+      { sDefaultValue: DEFAULTS.barColor }
+    ));
+
+    var lblBelowColor = 'Below-target bar color';
+    panel.addChild(new gadgets.ColorPickerGadgetInfo(
+      'tbBelowColor', lblBelowColor, lblBelowColor,
+      new gadgets.GadgetValueProperties(euidef.GadgetTypeIDs.COLOR_PICKER, t.belowColor || DEFAULTS.belowColor, { ariaLabel: lblBelowColor }),
+      0, false, null,
+      { sDefaultValue: DEFAULTS.belowColor }
+    ));
+
+    var lblTargetColor = 'Target hash color';
+    panel.addChild(new gadgets.ColorPickerGadgetInfo(
+      'tbTargetColor', lblTargetColor, lblTargetColor,
+      new gadgets.GadgetValueProperties(euidef.GadgetTypeIDs.COLOR_PICKER, t.targetColor || DEFAULTS.targetColor, { ariaLabel: lblTargetColor }),
+      0, false, null,
+      { sDefaultValue: DEFAULTS.targetColor }
+    ));
+
     TargetBar.superClass._addVizSpecificPropsDialog.call(this, oTabbedPanelsGadgetInfo);
   };
 
-  TargetBar.prototype._handlePropChange = function(oPropChange) {
-    if (typeof TargetBar.superClass._handleLegendPropChange === 'function') {
-      TargetBar.superClass._handleLegendPropChange.call(this, oPropChange);
+  var TB_GADGET_TO_KEY = {
+    tbShowGlyph:     'showGlyph',
+    tbShowShortfall: 'showShortfall',
+    tbBarColor:      'barColor',
+    tbBelowColor:    'belowColor',
+    tbTargetColor:   'targetColor'
+  };
+
+  TargetBar.prototype._handlePropChange = function(sGadgetID, oPropChange, oViewSettings, oActionContext) {
+    var conf = oViewSettings.getViewConfigJSON(dataviz.SettingsNS.CHART) || {};
+    var bUpdateSettings = TargetBar.superClass._handlePropChange.call(this, sGadgetID, oPropChange, oViewSettings, oActionContext);
+    if (typeof this._handleLegendPropChange === 'function') {
+      if (this._handleLegendPropChange(conf, sGadgetID, oPropChange, oViewSettings, oActionContext)) {
+        bUpdateSettings = true;
+      }
     }
-    TargetBar.superClass._handlePropChange.call(this, oPropChange);
+    var key = TB_GADGET_TO_KEY[sGadgetID];
+    if (key && oPropChange) {
+      var raw = oPropChange.getValue && oPropChange.getValue();
+      if (raw === undefined || raw === null) raw = oPropChange.value;
+      if (raw === undefined || raw === null) raw = oPropChange;
+      var newVal = raw;
+      if (raw && typeof raw === 'object') {
+        if ('checked' in raw)             newVal = raw.checked;
+        else if ('transientValue' in raw) newVal = raw.transientValue;
+        else if ('value' in raw)          newVal = raw.value;
+      }
+      if (!conf.targetBar) conf.targetBar = {};
+      conf.targetBar[key] = newVal;
+      oViewSettings.setViewConfigJSON(dataviz.SettingsNS.CHART, conf);
+      bUpdateSettings = true;
+    }
+    return bUpdateSettings;
   };
 
   return targetBar;
