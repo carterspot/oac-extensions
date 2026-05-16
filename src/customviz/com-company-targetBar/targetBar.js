@@ -32,18 +32,27 @@ define([
     barGapPct: 35,
     showGlyph: true,
     glyphRadius: 4,
-    showShortfall: true
+    showShortfall: true,
+    conditionalColor: true,
+    showValueLabels: true,
+    valueLabelPosition: 'outside-right',
+    showTargetLabel: true
   };
 
   function getSettings(self) {
     var cfg = (self.getViewConfig && self.getViewConfig()) || {};
     var t = cfg.targetBar || {};
+    function b(k){ return typeof t[k] === 'boolean' ? t[k] : DEFAULTS[k]; }
     return {
-      barColor:      t.barColor      || DEFAULTS.barColor,
-      belowColor:    t.belowColor    || DEFAULTS.belowColor,
-      targetColor:   t.targetColor   || DEFAULTS.targetColor,
-      showGlyph:     typeof t.showGlyph     === 'boolean' ? t.showGlyph     : DEFAULTS.showGlyph,
-      showShortfall: typeof t.showShortfall === 'boolean' ? t.showShortfall : DEFAULTS.showShortfall
+      barColor:           t.barColor           || DEFAULTS.barColor,
+      belowColor:         t.belowColor         || DEFAULTS.belowColor,
+      targetColor:        t.targetColor        || DEFAULTS.targetColor,
+      showGlyph:          b('showGlyph'),
+      showShortfall:      b('showShortfall'),
+      conditionalColor:   b('conditionalColor'),
+      showValueLabels:    b('showValueLabels'),
+      valueLabelPosition: t.valueLabelPosition || DEFAULTS.valueLabelPosition,
+      showTargetLabel:    b('showTargetLabel')
     };
   }
 
@@ -170,7 +179,17 @@ define([
         var y = i * bandHeight + rectYOffset;
         var hasTarget = d.target != null && !isNaN(d.target);
         var below = hasTarget && d.actual < d.target;
-        var fill = below ? s.belowColor : s.barColor;
+        var fill = (s.conditionalColor && below) ? s.belowColor : s.barColor;
+
+        // Tooltip text — includes variance when target present
+        var tip = String(d.category) + ': ' + fmt(d.actual);
+        if (hasTarget) {
+          var diff = d.actual - d.target;
+          var pct = d.target !== 0 ? (diff / d.target) * 100 : 0;
+          var sign = diff > 0 ? '+' : (diff < 0 ? '-' : '');
+          tip += '  (target ' + fmt(d.target) + ')';
+          tip += '\nΔ ' + sign + fmt(Math.abs(diff)) + '  (' + sign + Math.abs(pct).toFixed(1) + '%)';
+        }
 
         // Bar
         plot.append('rect')
@@ -179,8 +198,7 @@ define([
           .attr('width', Math.max(1, x(d.actual)))
           .attr('height', rectHeight)
           .attr('fill', fill)
-          .append('title').text(String(d.category) + ': ' + fmt(d.actual) +
-            (hasTarget ? '  (target ' + fmt(d.target) + ')' : ''));
+          .append('title').text(tip);
 
         // Shortfall connector: faint dashed line from bar-end to target tick when below
         if (below && s.showShortfall) {
@@ -205,14 +223,50 @@ define([
             .attr('stroke-width', 2);
         }
 
-        // Actual value label (right of bar)
-        plot.append('text')
-          .attr('x', Math.max(1, x(d.actual)) + 6)
-          .attr('y', y + rectHeight / 2)
-          .attr('dominant-baseline', 'central')
-          .attr('font-family', FONT).attr('font-size', VAL_SIZE)
-          .attr('fill', 'currentColor')
-          .text(fmt(d.actual));
+        // Actual value label — position per setting, with inside-too-narrow fallback
+        if (s.showValueLabels) {
+          var actualText = fmt(d.actual);
+          var actualW = actualText.length * 6.5; // rough estimate
+          var barW = Math.max(1, x(d.actual));
+          var ax, anchor, color;
+          var pos = s.valueLabelPosition;
+          var fits = barW > actualW + 12;
+          if (pos === 'inside-left' && fits) {
+            ax = 6; anchor = 'start'; color = '#fff';
+          } else if (pos === 'inside-right' && fits) {
+            ax = barW - 6; anchor = 'end'; color = '#fff';
+          } else {
+            ax = barW + 6; anchor = 'start'; color = 'currentColor';
+          }
+          plot.append('text')
+            .attr('class', 'target-bar-actual-label')
+            .attr('x', ax).attr('y', y + rectHeight / 2)
+            .attr('text-anchor', anchor)
+            .attr('dominant-baseline', 'central')
+            .attr('font-family', FONT).attr('font-size', VAL_SIZE)
+            .attr('fill', color)
+            .text(actualText);
+        }
+
+        // Target value label at hash mark, italic gray, with collision flip
+        if (s.showValueLabels && s.showTargetLabel && hasTarget) {
+          var targetText = fmt(d.target);
+          var tcx = x(d.target);
+          var actualLabelRight = Math.max(1, x(d.actual)) + 6 + (fmt(d.actual).length * 6.5);
+          var collision = (s.valueLabelPosition === 'outside-right' || !((s.valueLabelPosition === 'inside-left' || s.valueLabelPosition === 'inside-right') && Math.max(1, x(d.actual)) > fmt(d.actual).length * 6.5 + 12)) && Math.abs(tcx - actualLabelRight) < 40;
+          var ty = collision ? (y + rectHeight + 9) : (y - 3);
+          var baseline = collision ? 'hanging' : 'auto';
+          plot.append('text')
+            .attr('class', 'target-bar-target-label')
+            .attr('x', tcx).attr('y', ty)
+            .attr('text-anchor', 'middle')
+            .attr('dominant-baseline', baseline)
+            .attr('font-family', FONT).attr('font-size', 9)
+            .attr('font-style', 'italic')
+            .attr('fill', 'currentColor')
+            .attr('opacity', 0.65)
+            .text(targetText);
+        }
 
         // Status dot (left gutter) — colored to match the bar
         if (s.showGlyph) {
@@ -310,15 +364,56 @@ define([
       { sDefaultValue: DEFAULTS.targetColor }
     ));
 
+    var ckCond = typeof t.conditionalColor === 'boolean' ? t.conditionalColor : DEFAULTS.conditionalColor;
+    panel.addChild(new gadgets.CheckboxGadgetInfo(
+      'tbConditionalColor', 'Color bars by target', 'When off, all bars use the above-target color regardless of target comparison',
+      new gadgets.CheckboxGadgetValueProperties(euidef.GadgetTypeIDs.CHECKBOX, ckCond, ckCond),
+      0, false
+    ));
+
+    var ckLbls = typeof t.showValueLabels === 'boolean' ? t.showValueLabels : DEFAULTS.showValueLabels;
+    panel.addChild(new gadgets.CheckboxGadgetInfo(
+      'tbShowValueLabels', 'Show value labels', 'Show actual and target value labels',
+      new gadgets.CheckboxGadgetValueProperties(euidef.GadgetTypeIDs.CHECKBOX, ckLbls, ckLbls),
+      0, false
+    ));
+
+    var lblPos = 'Value label position';
+    var posOptions = [
+      new gadgets.OptionInfo('outside-right', 'Outside (right of bar)', 'Outside (right of bar)'),
+      new gadgets.OptionInfo('inside-right',  'Inside (right end)',     'Inside (right end)'),
+      new gadgets.OptionInfo('inside-left',   'Inside (left end)',      'Inside (left end)')
+    ];
+    panel.addChild(new gadgets.SingleSelectGadgetInfo(
+      'tbValueLabelPosition', lblPos, lblPos,
+      new gadgets.GadgetValueProperties(
+        euidef.GadgetTypeIDs.SINGLE_SELECT,
+        t.valueLabelPosition || DEFAULTS.valueLabelPosition,
+        { ariaLabel: lblPos }
+      ),
+      0, false, posOptions
+    ));
+
+    var ckTgtLbl = typeof t.showTargetLabel === 'boolean' ? t.showTargetLabel : DEFAULTS.showTargetLabel;
+    panel.addChild(new gadgets.CheckboxGadgetInfo(
+      'tbShowTargetLabel', 'Show target value', 'Show target value at the hash mark (auto-flips below the bar to avoid collision)',
+      new gadgets.CheckboxGadgetValueProperties(euidef.GadgetTypeIDs.CHECKBOX, ckTgtLbl, ckTgtLbl),
+      0, false
+    ));
+
     TargetBar.superClass._addVizSpecificPropsDialog.call(this, oTabbedPanelsGadgetInfo);
   };
 
   var TB_GADGET_TO_KEY = {
-    tbShowGlyph:     'showGlyph',
-    tbShowShortfall: 'showShortfall',
-    tbBarColor:      'barColor',
-    tbBelowColor:    'belowColor',
-    tbTargetColor:   'targetColor'
+    tbShowGlyph:          'showGlyph',
+    tbShowShortfall:      'showShortfall',
+    tbBarColor:           'barColor',
+    tbBelowColor:         'belowColor',
+    tbTargetColor:        'targetColor',
+    tbConditionalColor:   'conditionalColor',
+    tbShowValueLabels:    'showValueLabels',
+    tbValueLabelPosition: 'valueLabelPosition',
+    tbShowTargetLabel:    'showTargetLabel'
   };
 
   TargetBar.prototype._handlePropChange = function(sGadgetID, oPropChange, oViewSettings, oActionContext) {
