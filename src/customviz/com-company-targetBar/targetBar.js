@@ -36,7 +36,17 @@ define([
     conditionalColor: true,
     showValueLabels: true,
     valueLabelPosition: 'outside-right',
-    showTargetLabel: true
+    showTargetLabel: true,
+    numberFormat: 'auto',
+    numberDecimals: 0,
+    numberThousandSep: ',',
+    numberAbbreviation: 'auto',
+    numberNegativeStyle: 'minus',
+    currencySymbol: '$',
+    showAxisValues: true,
+    showAxisLabel: false,
+    axisLabel: '',
+    axisFontSize: 11
   };
 
   function getSettings(self) {
@@ -52,8 +62,57 @@ define([
       conditionalColor:   b('conditionalColor'),
       showValueLabels:    b('showValueLabels'),
       valueLabelPosition: t.valueLabelPosition || DEFAULTS.valueLabelPosition,
-      showTargetLabel:    b('showTargetLabel')
+      showTargetLabel:    b('showTargetLabel'),
+      numberFormat:        t.numberFormat        || DEFAULTS.numberFormat,
+      numberDecimals:      typeof t.numberDecimals === 'number' ? t.numberDecimals : DEFAULTS.numberDecimals,
+      numberThousandSep:   typeof t.numberThousandSep === 'string' ? t.numberThousandSep : DEFAULTS.numberThousandSep,
+      numberAbbreviation:  t.numberAbbreviation   || DEFAULTS.numberAbbreviation,
+      numberNegativeStyle: t.numberNegativeStyle  || DEFAULTS.numberNegativeStyle,
+      currencySymbol:      typeof t.currencySymbol === 'string' ? t.currencySymbol : DEFAULTS.currencySymbol,
+      showAxisValues:     b('showAxisValues'),
+      showAxisLabel:      b('showAxisLabel'),
+      axisLabel:           typeof t.axisLabel === 'string' ? t.axisLabel : DEFAULTS.axisLabel
     };
+  }
+
+  function formatNumber(val, s) {
+    var n = Number.parseFloat(val);
+    if (isNaN(n)) return String(val);
+    s = s || {};
+    var fmt = s.numberFormat || 'auto';
+    var decimals = typeof s.numberDecimals === 'number' ? s.numberDecimals : 0;
+    var thousandSep = typeof s.numberThousandSep === 'string' ? s.numberThousandSep : ',';
+    var abbreviation = s.numberAbbreviation || 'default';
+    var negStyle = s.numberNegativeStyle || 'minus';
+    var sym = s.currencySymbol || '$';
+    var working = n;
+    var suffix = '';
+    function applyAbbr(scale, suf) { working = n / scale; suffix = suf; }
+    switch (abbreviation) {
+      case 'auto': {
+        var abs = Math.abs(n);
+        if (abs >= 1e9) applyAbbr(1e9, 'B');
+        else if (abs >= 1e6) applyAbbr(1e6, 'M');
+        else if (abs >= 1e3) applyAbbr(1e3, 'K');
+        break;
+      }
+      case 'B': applyAbbr(1e9, 'B'); break;
+      case 'M': applyAbbr(1e6, 'M'); break;
+      case 'K': applyAbbr(1e3, 'K'); break;
+    }
+    if (fmt === 'percent') working = working * 100;
+    var fixed = Math.abs(working).toFixed(decimals);
+    var parts = fixed.split('.');
+    var intPart = parts[0];
+    if (thousandSep) intPart = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, thousandSep);
+    var absStr = decimals > 0 && parts[1] ? intPart + '.' + parts[1] : intPart;
+    var prefix = fmt === 'currency' ? sym : '';
+    var trailing = fmt === 'percent' ? '%' : '';
+    var body = prefix + absStr + suffix + trailing;
+    if (working >= 0) return body;
+    if (negStyle === 'parens') return '(' + body + ')';
+    if (negStyle === 'trailing') return body + '-';
+    return '-' + body;
   }
 
   var targetBar = {};
@@ -109,12 +168,9 @@ define([
     catch (e) { return '#3A3A3A'; }
   }
 
-  function fmt(v) {
+  function f(v, s) {
     if (v == null || isNaN(v)) return '';
-    var n = Number(v);
-    if (Math.abs(n) >= 1e6) return (n / 1e6).toFixed(1).replace(/\.0$/, '') + 'M';
-    if (Math.abs(n) >= 1e3) return (n / 1e3).toFixed(1).replace(/\.0$/, '') + 'K';
-    return String(Math.round(n));
+    return formatNumber(v, s);
   }
 
   TargetBar.prototype._render = function(ctx) {
@@ -151,10 +207,12 @@ define([
       });
       probe.remove();
 
+      var axisLabelHeight = s.showAxisLabel ? 18 : 0;
+      var axisValuesHeight = s.showAxisValues ? (s.axisFontSize + 8) : 0;
       var margin = {
         top: 16,
         right: 60,
-        bottom: 28,
+        bottom: Math.max(12, axisValuesHeight + axisLabelHeight + 6),
         left: Math.min(Math.ceil(widestLabel) + 16, Math.floor(width * 0.3))
       };
       var plotW = Math.max(40, width - margin.left - margin.right);
@@ -182,13 +240,13 @@ define([
         var fill = (s.conditionalColor && below) ? s.belowColor : s.barColor;
 
         // Tooltip text — includes variance when target present
-        var tip = String(d.category) + ': ' + fmt(d.actual);
+        var tip = String(d.category) + ': ' + f(d.actual, s);
         if (hasTarget) {
           var diff = d.actual - d.target;
           var pct = d.target !== 0 ? (diff / d.target) * 100 : 0;
           var sign = diff > 0 ? '+' : (diff < 0 ? '-' : '');
-          tip += '  (target ' + fmt(d.target) + ')';
-          tip += '\nΔ ' + sign + fmt(Math.abs(diff)) + '  (' + sign + Math.abs(pct).toFixed(1) + '%)';
+          tip += '  (target ' + f(d.target, s) + ')';
+          tip += '\nΔ ' + sign + f(Math.abs(diff), s) + '  (' + sign + Math.abs(pct).toFixed(1) + '%)';
         }
 
         // Bar
@@ -225,7 +283,7 @@ define([
 
         // Actual value label — position per setting, with inside-too-narrow fallback
         if (s.showValueLabels) {
-          var actualText = fmt(d.actual);
+          var actualText = f(d.actual, s);
           var actualW = actualText.length * 6.5; // rough estimate
           var barW = Math.max(1, x(d.actual));
           var ax, anchor, color;
@@ -250,10 +308,10 @@ define([
 
         // Target value label at hash mark, italic gray, with collision flip
         if (s.showValueLabels && s.showTargetLabel && hasTarget) {
-          var targetText = fmt(d.target);
+          var targetText = f(d.target, s);
           var tcx = x(d.target);
-          var actualLabelRight = Math.max(1, x(d.actual)) + 6 + (fmt(d.actual).length * 6.5);
-          var collision = (s.valueLabelPosition === 'outside-right' || !((s.valueLabelPosition === 'inside-left' || s.valueLabelPosition === 'inside-right') && Math.max(1, x(d.actual)) > fmt(d.actual).length * 6.5 + 12)) && Math.abs(tcx - actualLabelRight) < 40;
+          var actualLabelRight = Math.max(1, x(d.actual)) + 6 + (f(d.actual, s).length * 6.5);
+          var collision = (s.valueLabelPosition === 'outside-right' || !((s.valueLabelPosition === 'inside-left' || s.valueLabelPosition === 'inside-right') && Math.max(1, x(d.actual)) > f(d.actual, s).length * 6.5 + 12)) && Math.abs(tcx - actualLabelRight) < 40;
           var ty = collision ? (y + rectHeight + 9) : (y - 3);
           var baseline = collision ? 'hanging' : 'auto';
           plot.append('text')
@@ -291,15 +349,33 @@ define([
           .append('title').text(String(d.category));
       });
 
-      // X-axis
-      var xAxis = d3.svg.axis().scale(x).orient('bottom').ticks(5).tickFormat(fmt);
+      // X-axis (tick values + baseline)
+      var xAxis = d3.svg.axis().scale(x).orient('bottom').ticks(5).tickFormat(function(v){ return f(v, s); });
       var axisG = svg.append('g')
         .attr('transform', 'translate(' + margin.left + ',' + (margin.top + plotH) + ')')
-        .attr('font-family', FONT).attr('font-size', 10)
+        .attr('font-family', FONT).attr('font-size', s.axisFontSize)
         .attr('fill', 'currentColor');
       axisG.call(xAxis);
-      axisG.selectAll('path, line').attr('stroke', 'currentColor').attr('opacity', 0.4);
-      axisG.selectAll('text').attr('fill', 'currentColor');
+      axisG.selectAll('path').attr('stroke', 'currentColor').attr('stroke-width', 0.5).attr('opacity', 0.5);
+      axisG.selectAll('line').attr('stroke', 'currentColor').attr('stroke-width', 0.5).attr('opacity', 0.5);
+      if (s.showAxisValues) {
+        axisG.selectAll('text').attr('fill', 'currentColor');
+      } else {
+        axisG.selectAll('text').remove();
+      }
+
+      // X-axis label (centered below ticks)
+      if (s.showAxisLabel) {
+        var labelText = s.axisLabel && s.axisLabel.length ? s.axisLabel : 'Value';
+        svg.append('text')
+          .attr('class', 'target-bar-axis-label')
+          .attr('x', margin.left + plotW / 2)
+          .attr('y', margin.top + plotH + axisValuesHeight + 12)
+          .attr('text-anchor', 'middle')
+          .attr('font-family', FONT).attr('font-size', s.axisFontSize + 1)
+          .attr('fill', 'currentColor')
+          .text(labelText);
+      }
     } finally {
       this._setIsRendered(true);
     }
@@ -401,6 +477,118 @@ define([
       0, false
     ));
 
+    // Axis controls
+    var ckAxV = typeof t.showAxisValues === 'boolean' ? t.showAxisValues : DEFAULTS.showAxisValues;
+    panel.addChild(new gadgets.CheckboxGadgetInfo(
+      'tbShowAxisValues', 'Show axis values', 'Show numeric tick labels on the X-axis',
+      new gadgets.CheckboxGadgetValueProperties(euidef.GadgetTypeIDs.CHECKBOX, ckAxV, ckAxV),
+      0, false
+    ));
+
+    var ckAxL = typeof t.showAxisLabel === 'boolean' ? t.showAxisLabel : DEFAULTS.showAxisLabel;
+    panel.addChild(new gadgets.CheckboxGadgetInfo(
+      'tbShowAxisLabel', 'Show axis label', 'Show a title under the X-axis',
+      new gadgets.CheckboxGadgetValueProperties(euidef.GadgetTypeIDs.CHECKBOX, ckAxL, ckAxL),
+      0, false
+    ));
+
+    panel.addChild(new gadgets.TextGadgetInfo(
+      'tbAxisLabel', 'Axis label', 'Custom axis title (blank uses "Value")',
+      new gadgets.GadgetValueProperties(
+        euidef.GadgetTypeIDs.TEXT_FIELD,
+        typeof t.axisLabel === 'string' ? t.axisLabel : DEFAULTS.axisLabel
+      ),
+      0, false, null,
+      { sPlaceholderText: 'Value' }
+    ));
+
+    // Number Format
+    var fmtOptions = [
+      new gadgets.OptionInfo('auto',     'Auto',     'Auto'),
+      new gadgets.OptionInfo('comma',    'Number',   'Number'),
+      new gadgets.OptionInfo('currency', 'Currency', 'Currency'),
+      new gadgets.OptionInfo('percent',  'Percent',  'Percent')
+    ];
+    var lblFmt = 'Number Format';
+    panel.addChild(new gadgets.SingleSelectGadgetInfo(
+      'tbNumberFormat', lblFmt, lblFmt,
+      new gadgets.GadgetValueProperties(
+        euidef.GadgetTypeIDs.SINGLE_SELECT,
+        t.numberFormat || DEFAULTS.numberFormat,
+        { ariaLabel: lblFmt }
+      ),
+      0, false, fmtOptions
+    ));
+
+    panel.addChild(new gadgets.TextGadgetInfo(
+      'tbCurrencySymbol', 'Currency Symbol', 'Symbol used when Number Format = Currency',
+      new gadgets.GadgetValueProperties(
+        euidef.GadgetTypeIDs.TEXT_FIELD,
+        typeof t.currencySymbol === 'string' ? t.currencySymbol : DEFAULTS.currencySymbol
+      ),
+      0, false, null,
+      { sPlaceholderText: '$' }
+    ));
+
+    var initDec = typeof t.numberDecimals === 'number' ? t.numberDecimals : DEFAULTS.numberDecimals;
+    panel.addChild(new gadgets.SliderGadgetInfo(
+      'tbNumberDecimals', 'Decimal Places', 'Digits after the decimal (0-6)',
+      new gadgets.SliderGadgetValueProperties(euidef.GadgetTypeIDs.SLIDER, initDec, 0, 6, 1),
+      0, false, null,
+      { fValueFormatter: function(v) { return String(v); } }
+    ));
+
+    var sepOptions = [
+      new gadgets.OptionInfo(',', 'Comma (1,234)',  'Comma'),
+      new gadgets.OptionInfo('.', 'Period (1.234)', 'Period'),
+      new gadgets.OptionInfo(' ', 'Space (1 234)',  'Space'),
+      new gadgets.OptionInfo('',  'None (1234)',    'None')
+    ];
+    var lblSep = 'Thousand Separator';
+    panel.addChild(new gadgets.SingleSelectGadgetInfo(
+      'tbNumberThousandSep', lblSep, lblSep,
+      new gadgets.GadgetValueProperties(
+        euidef.GadgetTypeIDs.SINGLE_SELECT,
+        typeof t.numberThousandSep === 'string' ? t.numberThousandSep : DEFAULTS.numberThousandSep,
+        { ariaLabel: lblSep }
+      ),
+      0, false, sepOptions
+    ));
+
+    var abbrOptions = [
+      new gadgets.OptionInfo('default', 'Default (full digits)',     'Default'),
+      new gadgets.OptionInfo('auto',    'Auto (1.5K / 1.5M / 1.5B)', 'Auto'),
+      new gadgets.OptionInfo('K',       'Thousands (K)',             'Thousands'),
+      new gadgets.OptionInfo('M',       'Millions (M)',              'Millions'),
+      new gadgets.OptionInfo('B',       'Billions (B)',              'Billions')
+    ];
+    var lblAbbr = 'Abbreviation';
+    panel.addChild(new gadgets.SingleSelectGadgetInfo(
+      'tbNumberAbbreviation', lblAbbr, lblAbbr,
+      new gadgets.GadgetValueProperties(
+        euidef.GadgetTypeIDs.SINGLE_SELECT,
+        t.numberAbbreviation || DEFAULTS.numberAbbreviation,
+        { ariaLabel: lblAbbr }
+      ),
+      0, false, abbrOptions
+    ));
+
+    var negOptions = [
+      new gadgets.OptionInfo('minus',    '-123',  '-123'),
+      new gadgets.OptionInfo('parens',   '(123)', '(123)'),
+      new gadgets.OptionInfo('trailing', '123-',  '123-')
+    ];
+    var lblNeg = 'Negative Values';
+    panel.addChild(new gadgets.SingleSelectGadgetInfo(
+      'tbNumberNegativeStyle', lblNeg, lblNeg,
+      new gadgets.GadgetValueProperties(
+        euidef.GadgetTypeIDs.SINGLE_SELECT,
+        t.numberNegativeStyle || DEFAULTS.numberNegativeStyle,
+        { ariaLabel: lblNeg }
+      ),
+      0, false, negOptions
+    ));
+
     TargetBar.superClass._addVizSpecificPropsDialog.call(this, oTabbedPanelsGadgetInfo);
   };
 
@@ -413,7 +601,16 @@ define([
     tbConditionalColor:   'conditionalColor',
     tbShowValueLabels:    'showValueLabels',
     tbValueLabelPosition: 'valueLabelPosition',
-    tbShowTargetLabel:    'showTargetLabel'
+    tbShowTargetLabel:    'showTargetLabel',
+    tbShowAxisValues:     'showAxisValues',
+    tbShowAxisLabel:      'showAxisLabel',
+    tbAxisLabel:          'axisLabel',
+    tbNumberFormat:       'numberFormat',
+    tbCurrencySymbol:     'currencySymbol',
+    tbNumberDecimals:     'numberDecimals',
+    tbNumberThousandSep:  'numberThousandSep',
+    tbNumberAbbreviation: 'numberAbbreviation',
+    tbNumberNegativeStyle:'numberNegativeStyle'
   };
 
   TargetBar.prototype._handlePropChange = function(sGadgetID, oPropChange, oViewSettings, oActionContext) {
