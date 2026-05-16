@@ -268,14 +268,14 @@ define([
             .text(targetText);
         }
 
-        // Status dot (left gutter) — colored to match the bar
+        // Status dot (left gutter) — always conditional, independent of bar coloring
         if (s.showGlyph) {
           svg.append('circle')
             .attr('class', 'target-bar-glyph')
             .attr('cx', margin.left - 8)
             .attr('cy', margin.top + y + rectHeight / 2)
             .attr('r', DEFAULTS.glyphRadius)
-            .attr('fill', fill);
+            .attr('fill', below ? s.belowColor : s.barColor);
         }
 
         // Category label (left gutter, with offset for dot if present)
