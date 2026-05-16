@@ -74,12 +74,14 @@ define([
       if (nMeasures > 1) {
         try { target = oDataLayout.getValue(datamodelshapes.Physical.DATA, i, 1); } catch (e) {}
       }
-      var ci = this.getDataItemColorInfo(oHelper, oColorCtx, oColorInterp, i, 0);
+      // Ignore OAC's auto color-scale on the color edge — the color edge here
+      // carries the Target *value*, not categorical hue. Bar color is decided
+      // in render based on actual-vs-target comparison.
       aOut.push({
         category: category,
         actual: Number(actual),
         target: target == null ? null : Number(target),
-        color: (ci && ci.sColor) || null
+        color: null
       });
     }
     return aOut.length ? aOut : null;

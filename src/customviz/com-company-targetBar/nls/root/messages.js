@@ -2,8 +2,8 @@ define({
   TARGETBAR_DISPLAY_NAME: 'Target Bar',
   TARGETBAR_SHORT_DISPLAY_NAME: 'Target Bar',
   TARGETBAR_CATEGORY: 'Target Bar',
-  TARGETBAR_ACTUAL: 'Values (Actual)',
-  TARGETBAR_TARGET: 'Values (Target)',
+  TARGETBAR_ACTUAL: 'Actual',
+  TARGETBAR_TARGET: 'Target',
   TARGETBAR_CATEGORY_EDGE: 'Category',
   TOOLTIP_DETAIL_LABEL: 'Tooltip',
 
