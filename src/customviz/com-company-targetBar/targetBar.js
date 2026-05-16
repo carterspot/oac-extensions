@@ -55,9 +55,9 @@ define([
   TargetBar.prototype.myGenerateData = function(oDataLayout, ctx) {
     if (!oDataLayout) return null;
     var nRows = oDataLayout.getEdgeExtent(datamodelshapes.Physical.ROW);
-    var oDataModel = oDataLayout.getDataModel ? oDataLayout.getDataModel() : null;
     var nMeasures = 1;
     try {
+      var oDataModel = this.getRootDataModel();
       if (oDataModel && oDataModel.getColumnIDsIn) {
         var aCols = oDataModel.getColumnIDsIn(datamodelshapes.Physical.DATA);
         if (aCols && aCols.length) nMeasures = aCols.length;
