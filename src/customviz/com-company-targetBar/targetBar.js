@@ -30,8 +30,8 @@ define([
     belowColor: '#C46B6B',
     targetColor: '#3A3A3A',
     barGapPct: 35,
-    showBelowGlyph: true,
-    belowGlyph: '✗'
+    showGlyph: true,
+    glyphRadius: 4
   };
 
   var targetBar = {};
@@ -188,21 +188,18 @@ define([
           .attr('fill', 'currentColor')
           .text(fmt(d.actual));
 
-        // Below-target glyph (left gutter)
-        if (below && DEFAULTS.showBelowGlyph) {
-          svg.append('text')
-            .attr('class', 'target-bar-below-glyph')
-            .attr('x', margin.left - 6)
-            .attr('y', margin.top + y + rectHeight / 2)
-            .attr('text-anchor', 'end')
-            .attr('dominant-baseline', 'central')
-            .attr('font-family', FONT).attr('font-size', LABEL_SIZE)
-            .attr('fill', DEFAULTS.belowColor)
-            .text(DEFAULTS.belowGlyph);
+        // Status dot (left gutter) — colored to match the bar
+        if (DEFAULTS.showGlyph) {
+          svg.append('circle')
+            .attr('class', 'target-bar-glyph')
+            .attr('cx', margin.left - 8)
+            .attr('cy', margin.top + y + rectHeight / 2)
+            .attr('r', DEFAULTS.glyphRadius)
+            .attr('fill', fill);
         }
 
-        // Category label (left gutter, with offset for glyph if present)
-        var labelX = below && DEFAULTS.showBelowGlyph ? margin.left - 18 : margin.left - 6;
+        // Category label (left gutter, with offset for dot if present)
+        var labelX = DEFAULTS.showGlyph ? margin.left - 18 : margin.left - 6;
         svg.append('text')
           .attr('x', labelX)
           .attr('y', margin.top + y + rectHeight / 2)
