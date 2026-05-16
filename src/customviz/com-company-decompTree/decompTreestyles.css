@@ -50,10 +50,11 @@
   cursor: pointer;
 }
 .decomp-node-bar-bg {
-  fill: #e8e8e8;
+  fill: currentColor;
+  opacity: 0.12;
 }
 .decomp-node-bar {
-  fill: #4a90e2;
+  /* fill applied inline from viz.Config.barColor */
 }
 .decomp-node-label,
 .decomp-node-value {
