@@ -30,6 +30,19 @@ src/customviz/<plugin-id>/
   - `properties.icon` → resource id of the PNG
 - `<extension point-id="oracle.bi.tech.plugin.visualizationDatamodelHandler">` configuration JSON wires `module`/`method` and the `edgeConfig` (rows/measures/color/size/glyph/detail with min/maxCount and `contentType`).
 
+### Two named measure drop zones (e.g. Actual + Target)
+
+`edgeConfig` only defines one `measures` edge. To get a second clearly-named measure zone (rather than `maxCount: 2` with order-dependent meaning), repurpose `color` or `size` with `contentType: "measures"` and a `customName`:
+
+```json
+"measures": { "contentType": "measures", "global": {"minCount":1,"maxCount":1}, "ui": {"customName": {"default": "Actual"}} },
+"color":    { "contentType": "measures", "global": {"minCount":0,"maxCount":1}, "ui": {"customName": {"default": "Target"}} }
+```
+
+Pattern is from Oracle's bulletViz sample. Both measures stack into the DATA edge in bind order — actual at column 0, target at column 1. Tradeoff: repurposing `color` loses categorical coloring; use `size` instead if you need both.
+
+**Important**: plugin.xml changes require a full gradle restart — dvdesktop reads plugin.xml only at startup. JS hot-reloads on browser refresh; XML does not.
+
 ## Render lifecycle — the things that broke decompTree
 
 `createClientComponent` **must return a new instance**, not the class:
