@@ -35,7 +35,7 @@ define([
     showShortfall: true,
     conditionalColor: true,
     showValueLabels: true,
-    valueLabelPosition: 'outside-right',
+    valueLabelPosition: 'inside-left',
     showTargetLabel: true,
     numberFormat: 'auto',
     numberDecimals: 0,
@@ -307,24 +307,17 @@ define([
             .text(actualText);
         }
 
-        // Target value label at hash mark, italic gray, with collision flip
+        // Target value label always above the hash mark
         if (s.showValueLabels && s.showTargetLabel && hasTarget) {
-          var targetText = f(d.target, s);
-          var tcx = x(d.target);
-          var actualLabelRight = Math.max(1, x(d.actual)) + 6 + (f(d.actual, s).length * 6.5);
-          var collision = (s.valueLabelPosition === 'outside-right' || !((s.valueLabelPosition === 'inside-left' || s.valueLabelPosition === 'inside-right') && Math.max(1, x(d.actual)) > f(d.actual, s).length * 6.5 + 12)) && Math.abs(tcx - actualLabelRight) < 40;
-          var ty = collision ? (y + rectHeight + 9) : (y - 3);
-          var baseline = collision ? 'hanging' : 'auto';
           plot.append('text')
             .attr('class', 'target-bar-target-label')
-            .attr('x', tcx).attr('y', ty)
+            .attr('x', x(d.target)).attr('y', y - 3)
             .attr('text-anchor', 'middle')
-            .attr('dominant-baseline', baseline)
             .attr('font-family', FONT).attr('font-size', 9)
             .attr('font-style', 'italic')
             .attr('fill', 'currentColor')
             .attr('opacity', 0.65)
-            .text(targetText);
+            .text(f(d.target, s));
         }
 
         // Status dot (left gutter) — always conditional, independent of bar coloring
