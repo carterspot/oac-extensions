@@ -1,0 +1,11 @@
+Clipped from: https://vlamis.com/force-directed-graph-plugin/ 
+
+Now available on the Oracle Analytics Extensions Library. 
+
+The Force Directed Graph plugin allows you to easily visualize hierarchical data. You can click to expand and collapse nodes and each node’s location can be customized with dragging and pinning. The visualization automatically redistributes nodes to prevent overlap and each node is clickable to display subordinate data allowing you to visualize relationships. 
+
+The video below shows a demo of the Force Directed Graph Plugin running in Oracle Data Visualization for the Desktop (DVD). 
+
+ 
+
+https://youtu.be/T6tS0HIZbMA?si=ZNKAqnCySE1IPExv 
